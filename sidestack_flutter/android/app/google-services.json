@@ -1,0 +1,90 @@
+{
+  "project_info": {
+    "project_number": "385054728978",
+    "project_id": "sidestacks-1114d",
+    "storage_bucket": "sidestacks-1114d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:385054728978:android:f65a989b453b56009809cb",
+        "android_client_info": {
+          "package_name": "com.example.sidestack"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "385054728978-laj3e0j9l94bi9pooc4eqa7nhso34njf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAGdwW15MqPwtDw-fgmezlZe6tzx2PK9h8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "385054728978-laj3e0j9l94bi9pooc4eqa7nhso34njf.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "385054728978-923kek0l16uja7ov2lvfi52ha9d016id.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.sidestack"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:385054728978:android:20033e4d375829389809cb",
+        "android_client_info": {
+          "package_name": "com.sidestacks.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "385054728978-bjmvcr8t4s3c4t3rtcbedo6ifo1202m3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.sidestacks.app",
+            "certificate_hash": "1a68e5ed24d0e2330dc1b8c068c011425238e875"
+          }
+        },
+        {
+          "client_id": "385054728978-laj3e0j9l94bi9pooc4eqa7nhso34njf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAGdwW15MqPwtDw-fgmezlZe6tzx2PK9h8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "385054728978-laj3e0j9l94bi9pooc4eqa7nhso34njf.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "385054728978-923kek0l16uja7ov2lvfi52ha9d016id.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.sidestack"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
