@@ -65,7 +65,7 @@ class DefaultFirebaseOptions {
     projectId: 'sidestacks-1114d',
     storageBucket: 'sidestacks-1114d.firebasestorage.app',
     iosClientId: '385054728978-923kek0l16uja7ov2lvfi52ha9d016id.apps.googleusercontent.com',
-    iosBundleId: 'com.example.sidestack',
+    iosBundleId: 'com.sidestacks.app',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
@@ -75,7 +75,7 @@ class DefaultFirebaseOptions {
     projectId: 'sidestacks-1114d',
     storageBucket: 'sidestacks-1114d.firebasestorage.app',
     iosClientId: '385054728978-923kek0l16uja7ov2lvfi52ha9d016id.apps.googleusercontent.com',
-    iosBundleId: 'com.example.sidestack',
+    iosBundleId: 'com.sidestacks.app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(

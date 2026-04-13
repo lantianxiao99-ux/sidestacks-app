@@ -1,0 +1,49 @@
+rules_version = '2';
+
+// ─── SideStacks Firebase Storage Security Rules ──────────────────────────────
+//
+//  • Profile pictures: owner can read/write, anyone signed-in can read
+//    (so profile pics can be shown to other users in future features)
+//  • 5 MB max per upload, images only
+//  • Everything else is denied
+//
+// Deploy with:  firebase deploy --only storage
+// ─────────────────────────────────────────────────────────────────────────────
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ── Profile pictures ─────────────────────────────────────────────────────
+    match /profile_pictures/{userId}/{fileName} {
+      // Any signed-in user can view (so avatars work across the app)
+      allow read: if request.auth != null;
+
+      // Only the owner can upload/replace/delete their own picture
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && request.resource.size  < 5 * 1024 * 1024   // 5 MB max
+                   && request.resource.contentType.matches('image/.*');
+
+      allow delete: if request.auth != null
+                    && request.auth.uid == userId;
+    }
+
+    // ── PDF exports (tax reports, invoices) ──────────────────────────────────
+    // Stored per-user; only the owner can access them
+    match /exports/{userId}/{fileName} {
+      allow read, delete: if request.auth != null
+                          && request.auth.uid == userId;
+
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && request.resource.size < 20 * 1024 * 1024   // 20 MB max
+                   && (request.resource.contentType == 'application/pdf'
+                       || request.resource.contentType.matches('text/.*'));
+    }
+
+    // ── Catch-all: deny everything else ──────────────────────────────────────
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

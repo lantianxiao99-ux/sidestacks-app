@@ -10,11 +10,10 @@ const db = admin.firestore();
 // TrueLayer configuration
 //
 // Set these in Firebase environment config:
-//   firebase functions:config:set \
-//     truelayer.client_id="YOUR_CLIENT_ID" \
-//     truelayer.client_secret="YOUR_CLIENT_SECRET" \
-//     truelayer.redirect_uri="YOUR_REDIRECT_URI" \
-//     truelayer.env="sandbox"
+//   firebase functions:secrets:set TRUELAYER_CLIENT_ID
+//   firebase functions:secrets:set TRUELAYER_CLIENT_SECRET
+//   firebase functions:secrets:set TRUELAYER_REDIRECT_URI
+//   firebase functions:secrets:set TRUELAYER_ENV
 //
 // truelayer.env options: "sandbox" | "live"
 //
@@ -44,11 +43,83 @@ const REDIRECT_URI  = () => tlRedirectUri.value();
 const SCOPES = "accounts transactions offline_access";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// createAuthLink
+// Rate limiting
 //
-// Returns a TrueLayer OAuth URL. The Flutter app opens this URL in a browser
-// or WebView. After the user selects their bank and authenticates, TrueLayer
-// redirects to REDIRECT_URI with a `code` query parameter.
+// Stores a counter in Firestore at:
+//   users/{uid}/rate_limits/{windowKey}
+//
+// windowKey is   "<functionName>:<YYYY-MM-DD-HH>"  for hourly windows
+//           or   "<functionName>:<YYYY-MM-DD>"       for daily windows
+//
+// The document field `count` is atomically incremented.  If it exceeds the
+// limit we throw a resource-exhausted error.
+//
+// Limits (conservative — tighten once you know real traffic):
+//   createAuthLink       5 per hour   (OAuth starts)
+//   exchangeCode         5 per hour   (one-time code exchange)
+//   fetchBankTransactions 20 per hour, 60 per day  (expensive API calls)
+//   markTransactionsImported 30 per hour
+//   disconnectBank       10 per hour
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function checkRateLimit(
+  userId: string,
+  fnName: string,
+  maxPerHour: number,
+  maxPerDay?: number
+): Promise<void> {
+  const now = new Date();
+  const hourKey = `${fnName}:${now.toISOString().slice(0, 13)}`; // "fn:2024-05-10T14"
+  const dayKey  = `${fnName}:${now.toISOString().slice(0, 10)}`; // "fn:2024-05-10"
+
+  const limitsRef = db.collection("users").doc(userId).collection("rate_limits");
+
+  // Run hourly + optional daily check in a transaction to avoid races
+  await db.runTransaction(async (tx) => {
+    const hourRef = limitsRef.doc(hourKey);
+    const hourDoc = await tx.get(hourRef);
+    const hourCount = (hourDoc.data()?.count as number) ?? 0;
+
+    if (hourCount >= maxPerHour) {
+      throw new HttpsError(
+        "resource-exhausted",
+        `Too many requests. Please wait before trying again.`
+      );
+    }
+
+    if (maxPerDay !== undefined) {
+      const dayRef  = limitsRef.doc(dayKey);
+      const dayDoc  = await tx.get(dayRef);
+      const dayCount = (dayDoc.data()?.count as number) ?? 0;
+
+      if (dayCount >= maxPerDay) {
+        throw new HttpsError(
+          "resource-exhausted",
+          `Daily limit reached. Please try again tomorrow.`
+        );
+      }
+
+      // Increment day counter (expires in 2 days)
+      const dayExpiry = new Date(now);
+      dayExpiry.setDate(dayExpiry.getDate() + 2);
+      tx.set(dayRef, {
+        count:      admin.firestore.FieldValue.increment(1),
+        expires_at: dayExpiry,
+      }, { merge: true });
+    }
+
+    // Increment hour counter (expires in 2 hours)
+    const hourExpiry = new Date(now);
+    hourExpiry.setHours(hourExpiry.getHours() + 2);
+    tx.set(hourRef, {
+      count:      admin.firestore.FieldValue.increment(1),
+      expires_at: hourExpiry,
+    }, { merge: true });
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared guards
 // ─────────────────────────────────────────────────────────────────────────────
 
 function requireAppCheck(request: any) {
@@ -57,13 +128,26 @@ function requireAppCheck(request: any) {
   }
 }
 
-export const createAuthLink = onCall({ enforceAppCheck: true }, async (request) => {
+function requireAuth(request: any): string {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Sign in required.");
   }
-  requireAppCheck(request);
+  return request.auth.uid;
+}
 
-  const userId = request.auth.uid;
+// ─────────────────────────────────────────────────────────────────────────────
+// createAuthLink
+//
+// Returns a TrueLayer OAuth URL. The Flutter app opens this URL in a browser
+// or WebView. After the user selects their bank and authenticates, TrueLayer
+// redirects to REDIRECT_URI with a `code` query parameter.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const createAuthLink = onCall({ enforceAppCheck: true }, async (request) => {
+  requireAppCheck(request);
+  const userId = requireAuth(request);
+  await checkRateLimit(userId, "createAuthLink", 5);   // 5 per hour
+
   // `state` ties the callback back to this user securely
   const state = Buffer.from(JSON.stringify({ uid: userId, ts: Date.now() })).toString("base64url");
 
@@ -94,10 +178,9 @@ export const createAuthLink = onCall({ enforceAppCheck: true }, async (request) 
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const exchangeCode = onCall({ enforceAppCheck: true }, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError("unauthenticated", "Sign in required.");
-  }
   requireAppCheck(request);
+  const userId = requireAuth(request);
+  await checkRateLimit(userId, "exchangeCode", 5);   // 5 per hour
 
   const { code, state } = request.data;
 
@@ -107,8 +190,6 @@ export const exchangeCode = onCall({ enforceAppCheck: true }, async (request) =>
   if (typeof state !== "string" || state.trim().length === 0 || state.length > 512) {
     throw new HttpsError("invalid-argument", "Invalid state.");
   }
-
-  const userId = request.auth.uid;
 
   // Validate state belongs to this user
   const stateRef = db.collection("users").doc(userId).collection("bank_auth_state").doc(state);
@@ -210,12 +291,11 @@ async function refreshToken(connectionRef: FirebaseFirestore.DocumentReference):
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const fetchBankTransactions = onCall({ enforceAppCheck: true }, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError("unauthenticated", "Sign in required.");
-  }
   requireAppCheck(request);
+  const userId = requireAuth(request);
+  // 20 per hour, 60 per day — each call hits TrueLayer's API which costs money
+  await checkRateLimit(userId, "fetchBankTx", 20, 60);
 
-  const userId = request.auth.uid;
   const daysBack: number = request.data?.days_back ?? 90;
   if (!Number.isInteger(daysBack) || daysBack < 1 || daysBack > 365) {
     throw new HttpsError("invalid-argument", "days_back must be between 1 and 365.");
@@ -347,12 +427,10 @@ function _mapCategory(truelayerCategory: string): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const markTransactionsImported = onCall({ enforceAppCheck: true }, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError("unauthenticated", "Sign in required.");
-  }
   requireAppCheck(request);
+  const userId = requireAuth(request);
+  await checkRateLimit(userId, "markImported", 30);   // 30 per hour
 
-  const userId = request.auth.uid;
   const { transaction_ids } = request.data;
   if (!Array.isArray(transaction_ids) || transaction_ids.length === 0) return { success: true };
   if (transaction_ids.length > 500) {
@@ -378,12 +456,10 @@ export const markTransactionsImported = onCall({ enforceAppCheck: true }, async 
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const disconnectBank = onCall({ enforceAppCheck: true }, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError("unauthenticated", "Sign in required.");
-  }
   requireAppCheck(request);
+  const userId = requireAuth(request);
+  await checkRateLimit(userId, "disconnectBank", 10);   // 10 per hour
 
-  const userId = request.auth.uid;
   const { connection_id } = request.data as { connection_id?: string };
 
   if (typeof connection_id !== "string" || connection_id.trim().length === 0 || connection_id.length > 256) {

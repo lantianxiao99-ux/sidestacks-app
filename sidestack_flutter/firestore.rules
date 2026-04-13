@@ -1,0 +1,67 @@
+rules_version = '2';
+
+// ─── SideStacks Firestore Security Rules ────────────────────────────────────
+//
+// Key principles:
+//  • Every user can only read and write their OWN data (path is users/{uid}/…)
+//  • No public read or write access anywhere
+//  • bank_connections sub-collection is write-locked to Cloud Functions only
+//    (the admin SDK bypasses these rules, so client apps can never touch it)
+//  • All other sub-collections require the authenticated user to own the path
+//
+// Deploy with:  firebase deploy --only firestore:rules
+// ─────────────────────────────────────────────────────────────────────────────
+
+service cloud.firestore {
+
+  // ── Helper (must be inside the service block) ─────────────────────────────
+  function isOwner(userId) {
+    return request.auth != null && request.auth.uid == userId;
+  }
+
+  match /databases/{database}/documents {
+
+    // ── User document ──────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read, update: if isOwner(userId);
+      allow create:       if isOwner(userId);
+      allow delete:       if false;
+
+      // ── Sub-collections (stacks, ideas, invoices, mileage, etc.) ────────
+      match /{subCol}/{docId} {
+        // bank_connections holds OAuth tokens — Cloud Functions only
+        allow read:  if isOwner(userId) && subCol != 'bank_connections';
+        allow write: if isOwner(userId)
+                     && subCol != 'bank_connections'
+                     && subCol != 'bank_auth_state'
+                     && subCol != 'imported_bank_tx_ids';
+      }
+
+      // ── imported_bank_tx_ids (written by Cloud Function only) ─────────
+      match /imported_bank_tx_ids/{docId} {
+        allow read:  if isOwner(userId);
+        allow write: if false;
+      }
+
+      // ── bank_connections (OAuth tokens — never readable by client) ─────
+      match /bank_connections/{connId} {
+        allow read, write: if false;
+      }
+
+      // ── bank_auth_state (one-time OAuth state tokens) ──────────────────
+      match /bank_auth_state/{stateId} {
+        allow read, write: if false;
+      }
+
+      // ── rate_limits (written by Cloud Functions only) ──────────────────
+      match /rate_limits/{limitId} {
+        allow read, write: if false;
+      }
+    }
+
+    // ── Catch-all: deny everything not explicitly matched above ───────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
