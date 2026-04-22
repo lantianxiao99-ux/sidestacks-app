@@ -54,8 +54,8 @@ class _StackDetailScreenState extends State<StackDetailScreen>
         ),
         title: Row(
           children: [
-            Text(stack.hustleType.emoji,
-                style: const TextStyle(fontSize: 20)),
+            Icon(stack.hustleType.icon, size: 20,
+                color: AppTheme.of(context).textSecondary),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -1598,7 +1598,7 @@ class _AnalyticsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     if (stack.transactions.isEmpty) {
       return const EmptyState(
-        emoji: '📈',
+        icon: Icons.trending_up_outlined,
         title: 'No data yet',
         subtitle: 'Add your first income or expense to start tracking this stack.',
       );

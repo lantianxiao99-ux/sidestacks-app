@@ -103,7 +103,7 @@ class _PaywallSheetState extends State<_PaywallSheet> {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('🎉 Pro unlocked. Let\'s get to work!'),
+          content: Text('Pro unlocked. Let\'s get to work!'),
           backgroundColor: AppTheme.green,
         ),
       );
@@ -136,7 +136,7 @@ class _PaywallSheetState extends State<_PaywallSheet> {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('✅ Pro restored!'),
+          content: Text('Pro subscription restored!'),
           backgroundColor: AppTheme.green,
         ),
       );
@@ -232,7 +232,7 @@ class _PaywallSheetState extends State<_PaywallSheet> {
                 final currencySymbol = provider.currencySymbol;
                 final subtitle = totalProfit > 0
                     ? 'You\'ve earned $currencySymbol${totalProfit.toStringAsFixed(2)} so far. Pro helps you keep more of it.'
-                    : 'Track every pound, invoice clients, and see where your money really goes.';
+                    : 'Track every dollar, invoice clients, and see where your money really goes.';
                 return Text(
                   subtitle,
                   style: TextStyle(
@@ -584,7 +584,7 @@ class _ComparisonTable extends StatelessWidget {
               SizedBox(
                 width: 70,
                 child: Text(
-                  'PRO ⚡',
+                  'PRO',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 10,

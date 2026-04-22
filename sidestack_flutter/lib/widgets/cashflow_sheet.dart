@@ -129,7 +129,7 @@ class CashFlowScreen extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text('🗓️', style: TextStyle(fontSize: 42)),
+                      const Icon(Icons.calendar_today_outlined, size: 42, color: AppTheme.accent),
                       const SizedBox(height: 16),
                       const Text(
                         'Nothing upcoming',
@@ -339,8 +339,7 @@ class _CashFlowSheet extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Text('💸',
-                          style: TextStyle(fontSize: 22)),
+                      const Icon(Icons.account_balance_wallet_outlined, size: 22, color: AppTheme.accent),
                       const SizedBox(width: 10),
                       const Text(
                         'Cash Flow',
@@ -433,7 +432,7 @@ class _CashFlowSheet extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('🗓️', style: TextStyle(fontSize: 42)),
+            const Icon(Icons.calendar_today_outlined, size: 42, color: AppTheme.accent),
             const SizedBox(height: 16),
             const Text(
               'Nothing upcoming',

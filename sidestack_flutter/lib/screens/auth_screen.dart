@@ -1,8 +1,20 @@
+import 'dart:io';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/auth_provider.dart';
+import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
+
+const _kPrivacyUrl = 'https://lantianxiao99-ux.github.io/sidestacks-legal/privacy.html';
+const _kTermsUrl   = 'https://lantianxiao99-ux.github.io/sidestacks-legal/terms.html';
+
+Future<void> _openUrl(String url) async {
+  final uri = Uri.parse(url);
+  if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+}
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -16,10 +28,13 @@ class _AuthScreenState extends State<AuthScreen>
   late TabController _tabController;
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _nameController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isSubmitting = false;
+  String? _usernameError;
 
   @override
   void initState() {
@@ -32,7 +47,9 @@ class _AuthScreenState extends State<AuthScreen>
     _tabController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _nameController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _usernameController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
   }
@@ -47,6 +64,30 @@ class _AuthScreenState extends State<AuthScreen>
         _passwordController.text,
       );
     } else {
+      // Validate name fields
+      if (_firstNameController.text.trim().isEmpty ||
+          _lastNameController.text.trim().isEmpty) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter your first and last name')),
+        );
+        return;
+      }
+      // Validate username
+      final username = _usernameController.text.trim();
+      if (username.isEmpty) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please choose a username')),
+        );
+        return;
+      }
+      final usernameErr = await auth.checkUsername(username);
+      if (usernameErr != null) {
+        setState(() { _usernameError = usernameErr; _isSubmitting = false; });
+        return;
+      }
+      // Validate passwords
       if (_passwordController.text != _confirmPasswordController.text) {
         setState(() => _isSubmitting = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -57,8 +98,14 @@ class _AuthScreenState extends State<AuthScreen>
       success = await auth.signUpWithEmail(
         _emailController.text.trim(),
         _passwordController.text,
-        _nameController.text.trim(),
+        _firstNameController.text.trim(),
+        _lastNameController.text.trim(),
+        username,
       );
+      if (success && mounted) {
+        // Immediately set username as their display preference
+        context.read<AppProvider>().setUsername(username);
+      }
     }
     setState(() => _isSubmitting = false);
     if (!success && mounted) {
@@ -83,23 +130,29 @@ class _AuthScreenState extends State<AuthScreen>
     }
   }
 
-  Future<void> _resetPassword() async {
-    if (_emailController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter your email first')),
-      );
-      return;
-    }
+  Future<void> _signInWithApple() async {
+    setState(() => _isSubmitting = true);
     final auth = context.read<AuthProvider>();
-    final success = await auth.resetPassword(_emailController.text.trim());
-    if (mounted) {
+    final success = await auth.signInWithApple();
+    setState(() => _isSubmitting = false);
+    if (!success && mounted && auth.error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(success ? 'Reset email sent! Check your inbox.' : (auth.error ?? 'Failed')),
-          backgroundColor: success ? AppTheme.green : AppTheme.red,
-        ),
+        SnackBar(content: Text(auth.error!), backgroundColor: AppTheme.red),
       );
     }
+  }
+
+  void _showForgotPasswordSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.of(context).surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (sheetCtx) => _ForgotPasswordSheet(
+        prefillValue: _emailController.text.trim(),
+      ),
+    );
   }
 
   @override
@@ -119,7 +172,7 @@ class _AuthScreenState extends State<AuthScreen>
                         ClipRRect(
                           borderRadius: BorderRadius.circular(18),
                           child: Image.asset(
-                            'assets/icon.png',
+                            'assets/logo_white.png',
                             width: 64,
                             height: 64,
                             fit: BoxFit.cover,
@@ -158,22 +211,64 @@ class _AuthScreenState extends State<AuthScreen>
                   const SizedBox(height: 24),
 
                   if (_tabController.index == 1) ...[
-                    _FieldLabel('Your name'),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _FieldLabel('First name'),
+                              TextField(
+                                controller: _firstNameController,
+                                style: TextStyle(fontSize: 14, color: AppTheme.of(context).textPrimary),
+                                decoration: const InputDecoration(hintText: 'Jordan'),
+                                textCapitalization: TextCapitalization.words,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _FieldLabel('Last name'),
+                              TextField(
+                                controller: _lastNameController,
+                                style: TextStyle(fontSize: 14, color: AppTheme.of(context).textPrimary),
+                                decoration: const InputDecoration(hintText: 'Dawes'),
+                                textCapitalization: TextCapitalization.words,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    _FieldLabel('Username'),
                     TextField(
-                      controller: _nameController,
+                      controller: _usernameController,
                       style: TextStyle(fontSize: 14, color: AppTheme.of(context).textPrimary),
-                      decoration: const InputDecoration(hintText: 'Jordan Dawes'),
-                      textCapitalization: TextCapitalization.words,
+                      decoration: InputDecoration(
+                        hintText: 'jordandawes',
+                        prefixText: '@',
+                        errorText: _usernameError,
+                        helperText: 'Letters, numbers and underscores only',
+                        helperStyle: TextStyle(fontSize: 10, color: AppTheme.of(context).textMuted),
+                      ),
+                      keyboardType: TextInputType.visiblePassword,
+                      autocorrect: false,
+                      onChanged: (_) { if (_usernameError != null) setState(() => _usernameError = null); },
                     ),
                     const SizedBox(height: 14),
                   ],
 
-                  _FieldLabel('Email'),
+                  _FieldLabel(_tabController.index == 0 ? 'Email or username' : 'Email'),
                   TextField(
                     controller: _emailController,
                     style: TextStyle(fontSize: 14, color: AppTheme.of(context).textPrimary),
-                    decoration: const InputDecoration(hintText: 'you@example.com'),
-                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(hintText: _tabController.index == 0 ? 'you@example.com or @username' : 'you@example.com'),
+                    keyboardType: _tabController.index == 0 ? TextInputType.text : TextInputType.emailAddress,
                   ),
                   const SizedBox(height: 14),
 
@@ -208,7 +303,7 @@ class _AuthScreenState extends State<AuthScreen>
                     Align(
                       alignment: Alignment.centerRight,
                       child: GestureDetector(
-                        onTap: _resetPassword,
+                        onTap: _showForgotPasswordSheet,
                         child: const Padding(
                           padding: EdgeInsets.symmetric(vertical: 8),
                           child: Text('Forgot password?',
@@ -259,13 +354,61 @@ class _AuthScreenState extends State<AuthScreen>
                       ),
                     ),
                   ),
+                  if (Platform.isIOS) ...[
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: _isSubmitting ? null : _signInWithApple,
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: AppTheme.of(context).border),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.apple, size: 20, color: AppTheme.of(context).textPrimary),
+                            const SizedBox(width: 8),
+                            Text('Continue with Apple',
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.of(context).textPrimary)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
 
                   const SizedBox(height: 32),
                   Center(
-                    child: Text(
-                      'By continuing you agree to our Terms & Privacy Policy',
-                      style: TextStyle(fontSize: 11, color: AppTheme.of(context).textMuted),
+                    child: RichText(
                       textAlign: TextAlign.center,
+                      text: TextSpan(
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.of(context).textMuted),
+                        children: [
+                          const TextSpan(text: 'By continuing you agree to our '),
+                          TextSpan(
+                            text: 'Terms of Service',
+                            style: const TextStyle(
+                                color: AppTheme.accent,
+                                fontWeight: FontWeight.w500,
+                                decoration: TextDecoration.underline),
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = () => _openUrl(_kTermsUrl),
+                          ),
+                          const TextSpan(text: ' and '),
+                          TextSpan(
+                            text: 'Privacy Policy',
+                            style: const TextStyle(
+                                color: AppTheme.accent,
+                                fontWeight: FontWeight.w500,
+                                decoration: TextDecoration.underline),
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = () => _openUrl(_kPrivacyUrl),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -276,6 +419,317 @@ class _AuthScreenState extends State<AuthScreen>
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Forgot password / forgot username bottom sheet
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ForgotPasswordSheet extends StatefulWidget {
+  final String prefillValue;
+  const _ForgotPasswordSheet({this.prefillValue = ''});
+
+  @override
+  State<_ForgotPasswordSheet> createState() => _ForgotPasswordSheetState();
+}
+
+class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
+  late final TextEditingController _ctrl;
+  final TextEditingController _emailForUsernameCtrl = TextEditingController();
+
+  bool _loading = false;
+  bool _sent = false;
+  String? _error;
+
+  // Forgot-username sub-flow
+  bool _showUsernameRecovery = false;
+  bool _lookingUpUsername = false;
+  String? _foundUsername;
+  String? _usernameError;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.prefillValue);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    _emailForUsernameCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sendResetEmail() async {
+    final value = _ctrl.text.trim();
+    if (value.isEmpty) {
+      setState(() => _error = 'Please enter your email or username.');
+      return;
+    }
+    setState(() { _loading = true; _error = null; });
+    final auth = context.read<AuthProvider>();
+    final success = await auth.resetPassword(value);
+    if (!mounted) return;
+    if (success) {
+      setState(() { _loading = false; _sent = true; });
+    } else {
+      setState(() { _loading = false; _error = auth.error ?? 'Something went wrong.'; });
+    }
+  }
+
+  Future<void> _lookUpUsername() async {
+    final email = _emailForUsernameCtrl.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() => _usernameError = 'Enter a valid email address.');
+      return;
+    }
+    setState(() { _lookingUpUsername = true; _usernameError = null; _foundUsername = null; });
+    final auth = context.read<AuthProvider>();
+    final username = await auth.lookupUsernameByEmail(email);
+    if (!mounted) return;
+    if (username != null) {
+      setState(() { _lookingUpUsername = false; _foundUsername = username; });
+    } else {
+      setState(() {
+        _lookingUpUsername = false;
+        _usernameError = 'No account found with that email.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.of(context);
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Drag handle
+            Center(
+              child: Container(
+                width: 36, height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                    color: colors.border,
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+
+            // ── Password reset ─────────────────────────────────────────────
+            Row(children: [
+              Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  color: AppTheme.accentDim,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.lock_reset_outlined,
+                    size: 18, color: AppTheme.accent),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Reset your password',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: colors.textPrimary)),
+                    Text('We\'ll email you a reset link',
+                        style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+                  ],
+                ),
+              ),
+            ]),
+            const SizedBox(height: 20),
+
+            if (_sent) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.greenDim,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppTheme.green.withOpacity(0.3)),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.mark_email_read_outlined,
+                      size: 22, color: AppTheme.green),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Check your inbox!',
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.green)),
+                        Text('We\'ve sent a password reset link. It may take a minute to arrive.',
+                            style: TextStyle(
+                                fontSize: 12, color: colors.textSecondary, height: 1.4)),
+                      ],
+                    ),
+                  ),
+                ]),
+              ),
+            ] else ...[
+              TextField(
+                controller: _ctrl,
+                autofocus: true,
+                keyboardType: TextInputType.text,
+                style: TextStyle(fontSize: 14, color: colors.textPrimary),
+                decoration: InputDecoration(
+                  hintText: 'you@example.com or @username',
+                  hintStyle: TextStyle(color: colors.textMuted, fontSize: 13),
+                  errorText: _error,
+                ),
+                onSubmitted: (_) => _sendResetEmail(),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                      backgroundColor: AppTheme.accent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14))),
+                  onPressed: _loading ? null : _sendResetEmail,
+                  child: _loading
+                      ? const SizedBox(
+                          width: 18, height: 18,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2))
+                      : const Text('Send reset email',
+                          style: TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 28),
+            Divider(color: colors.border),
+            const SizedBox(height: 16),
+
+            // ── Forgot username sub-flow ───────────────────────────────────
+            GestureDetector(
+              onTap: () => setState(() {
+                _showUsernameRecovery = !_showUsernameRecovery;
+                _foundUsername = null;
+                _usernameError = null;
+              }),
+              child: Row(children: [
+                Container(
+                  width: 36, height: 36,
+                  decoration: BoxDecoration(
+                    color: colors.cardAlt,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.alternate_email,
+                      size: 18, color: colors.textSecondary),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Forgot your username?',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: colors.textPrimary)),
+                      Text('Look it up using your email address',
+                          style: TextStyle(
+                              fontSize: 12, color: colors.textSecondary)),
+                    ],
+                  ),
+                ),
+                Icon(
+                  _showUsernameRecovery
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
+                  size: 20, color: colors.textMuted,
+                ),
+              ]),
+            ),
+
+            if (_showUsernameRecovery) ...[
+              const SizedBox(height: 16),
+              if (_foundUsername != null) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentDim,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppTheme.accent.withOpacity(0.3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Your username is:',
+                          style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+                      const SizedBox(height: 4),
+                      Text('@$_foundUsername',
+                          style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.accent,
+                              letterSpacing: 0.5)),
+                    ],
+                  ),
+                ),
+              ] else ...[
+                TextField(
+                  controller: _emailForUsernameCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  style: TextStyle(fontSize: 14, color: colors.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: 'Email address on your account',
+                    hintStyle: TextStyle(color: colors.textMuted, fontSize: 13),
+                    errorText: _usernameError,
+                  ),
+                  onSubmitted: (_) => _lookUpUsername(),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: colors.border),
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14))),
+                    onPressed: _lookingUpUsername ? null : _lookUpUsername,
+                    child: _lookingUpUsername
+                        ? SizedBox(
+                            width: 16, height: 16,
+                            child: CircularProgressIndicator(
+                                color: colors.textMuted, strokeWidth: 2))
+                        : Text('Find my username',
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: colors.textPrimary)),
+                  ),
+                ),
+              ],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _FieldLabel extends StatelessWidget {
   final String text;

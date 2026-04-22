@@ -15,7 +15,7 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const _kAndroidApiKey = 'goog_ARPTbIyMosKndzYjgnIfobNOyfc';
-const _kIosApiKey     = 'YOUR_REVENUECAT_IOS_API_KEY';
+const _kIosApiKey     = 'appl_yOWgtuVWyQliguDnFbtjQsAbWPR';
 
 /// The entitlement ID configured in the RevenueCat dashboard.
 const kRcEntitlement = 'SideStacks Pro';

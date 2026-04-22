@@ -165,7 +165,7 @@ class _IdeasScreenState extends State<IdeasScreen> {
                         ),
                         const SizedBox(width: 8),
                         _FilterChip(
-                          label: '💡 New',
+                          label: 'New',
                           isSelected:
                               _filterStatus == IdeaStatus.newIdea,
                           onTap: () => setState(
@@ -181,7 +181,7 @@ class _IdeasScreenState extends State<IdeasScreen> {
                         ),
                         const SizedBox(width: 8),
                         _FilterChip(
-                          label: '✅ Approved',
+                          label: 'Approved',
                           isSelected:
                               _filterStatus == IdeaStatus.approved,
                           onTap: () => setState(
@@ -298,7 +298,7 @@ class _IdeasScreenState extends State<IdeasScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Launch it 🚀',
+            child: const Text('Launch it',
                 style: TextStyle(color: AppTheme.accent)),
           ),
         ],
@@ -396,10 +396,8 @@ class _IdeaCard extends StatelessWidget {
               // Header row
               Row(
                 children: [
-                  Text(
-                    idea.hustleType.emoji,
-                    style: const TextStyle(fontSize: 18),
-                  ),
+                  Icon(idea.hustleType.icon, size: 18,
+                      color: Theme.of(context).textTheme.bodySmall?.color),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -480,8 +478,8 @@ class _IdeaCard extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text('🚀',
-                            style: TextStyle(fontSize: 13)),
+                        const Icon(Icons.rocket_launch_outlined,
+                            size: 13, color: AppTheme.green),
                         const SizedBox(width: 6),
                         Text(
                           'Launch as SideStack',
@@ -526,7 +524,7 @@ class _StatusPill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(status.emoji, style: const TextStyle(fontSize: 9)),
+          Icon(status.icon, size: 10, color: color),
           const SizedBox(width: 3),
           Text(
             status.label,
@@ -644,7 +642,7 @@ class _EmptyState extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: const Center(
-                child: Text('💡', style: TextStyle(fontSize: 36)),
+                child: const Icon(Icons.lightbulb_outline, size: 40, color: Colors.white),
               ),
             ),
             const SizedBox(height: 20),

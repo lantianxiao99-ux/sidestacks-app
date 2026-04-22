@@ -162,7 +162,7 @@ class _BankImportScreenState extends State<BankImportScreen> {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('✅ $count transaction${count == 1 ? '' : 's'} imported!'),
+          content: Text('$count transaction${count == 1 ? '' : 's'} imported!'),
           backgroundColor: AppTheme.green,
         ),
       );
@@ -275,7 +275,7 @@ class _BankImportScreenState extends State<BankImportScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('✅', style: TextStyle(fontSize: 56)),
+              const Icon(Icons.check_circle_outline, size: 56, color: AppTheme.green),
               const SizedBox(height: 20),
               const Text('All caught up!',
                   style:
@@ -508,9 +508,15 @@ class _TransactionReviewCard extends StatelessWidget {
                             items: stacks
                                 .map((s) => DropdownMenuItem(
                                       value: s.id,
-                                      child: Text(
-                                          '${s.hustleType.emoji} ${s.name}',
-                                          overflow: TextOverflow.ellipsis),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(s.hustleType.icon, size: 14),
+                                          const SizedBox(width: 6),
+                                          Text(s.name,
+                                              overflow: TextOverflow.ellipsis),
+                                        ],
+                                      ),
                                     ))
                                 .toList(),
                             onChanged: onStackChanged,

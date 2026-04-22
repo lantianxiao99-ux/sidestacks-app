@@ -621,8 +621,8 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
                               final opt = options.elementAt(i);
                               return ListTile(
                                 dense: true,
-                                leading: const Text('🤝',
-                                    style: TextStyle(fontSize: 14)),
+                                leading: const Icon(Icons.people_outline,
+                                    size: 18, color: AppTheme.accent),
                                 title: Text(opt,
                                     style: const TextStyle(fontSize: 13)),
                                 onTap: () => onSelected(opt),

@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy – SideStacks</title>
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --teal: #14B8A6; --teal-dim: rgba(20,184,166,0.10); --teal-border: rgba(20,184,166,0.22);
+      --navy: #0A1628; --navy3: #162032; --card: #111B2A;
+      --border: rgba(255,255,255,0.07); --white: #FFFFFF;
+      --text: #B8C5D6; --text-bright: #E2EAF4; --muted: #5A6E85;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', sans-serif; background: var(--navy); color: var(--text); -webkit-font-smoothing: antialiased; line-height: 1.75; }
+
+    /* Nav */
+    body > nav { display: flex; align-items: center; justify-content: space-between; padding: 0 5%; height: 60px; background: rgba(10,22,40,0.94); backdrop-filter: blur(16px); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+    .nav-logo { display: flex; align-items: center; gap: 9px; text-decoration: none; }
+    .nav-logo img { height: 26px; border-radius: 6px; }
+    .nav-logo span { font-size: 16px; font-weight: 700; color: var(--white); letter-spacing: -0.3px; }
+    body > nav a.back { font-size: 13px; color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 5px; transition: color 0.15s; }
+    body > nav a.back:hover { color: var(--text-bright); }
+
+    /* Layout */
+    .page-wrap { max-width: 1060px; margin: 0 auto; padding: 64px 5% 120px; display: grid; grid-template-columns: 1fr 220px; gap: 64px; align-items: start; }
+
+    /* Header */
+    .doc-header { margin-bottom: 52px; }
+    .badge { display: inline-flex; align-items: center; gap: 6px; background: var(--teal-dim); border: 1px solid var(--teal-border); color: var(--teal); font-size: 10.5px; font-weight: 600; letter-spacing: 0.9px; text-transform: uppercase; padding: 4px 11px; border-radius: 20px; margin-bottom: 18px; }
+    .doc-header h1 { font-size: 38px; font-weight: 800; color: var(--white); letter-spacing: -1px; line-height: 1.1; margin-bottom: 14px; }
+    .doc-meta { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .doc-meta span { font-size: 13px; color: var(--muted); }
+
+    /* Sections */
+    .section { margin-bottom: 20px; scroll-margin-top: 80px; }
+    .section-inner { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 26px 30px 26px 34px; position: relative; overflow: hidden; }
+    .section-inner::before { content: ''; position: absolute; left: 0; top: 18px; bottom: 18px; width: 3px; background: var(--teal); border-radius: 0 2px 2px 0; opacity: 0.55; }
+    h2 { font-size: 16px; font-weight: 700; color: var(--white); margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+    .num { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 5px; background: var(--teal-dim); border: 1px solid var(--teal-border); border-radius: 6px; font-size: 10.5px; font-weight: 700; color: var(--teal); flex-shrink: 0; }
+    h3 { font-size: 13.5px; font-weight: 600; color: var(--text-bright); margin: 20px 0 7px; letter-spacing: 0.1px; }
+    p { color: var(--text); font-size: 14px; margin-bottom: 11px; line-height: 1.78; }
+    p:last-child { margin-bottom: 0; }
+    ul { margin: 6px 0 12px; padding: 0; list-style: none; }
+    ul li { font-size: 14px; color: var(--text); padding: 4px 0 4px 18px; position: relative; line-height: 1.65; }
+    ul li::before { content: ''; position: absolute; left: 0; top: 12px; width: 5px; height: 5px; background: var(--teal); border-radius: 50%; opacity: 0.65; }
+    a { color: var(--teal); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    strong { color: var(--text-bright); font-weight: 600; }
+
+    /* Contact box */
+    .contact-box { background: var(--navy3); border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; margin-top: 14px; }
+    .contact-box p { margin-bottom: 3px; font-size: 13.5px; }
+    .contact-box p:last-child { margin-bottom: 0; }
+
+    /* TOC */
+    .toc { position: sticky; top: 80px; }
+    .toc-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+    .toc-list { list-style: none; padding: 0; margin: 0; }
+    .toc-list li { margin-bottom: 1px; }
+    .toc-list a { font-size: 12.5px; color: var(--muted); text-decoration: none; display: block; padding: 5px 9px; border-radius: 7px; transition: all 0.14s; line-height: 1.4; }
+    .toc-list a:hover { color: var(--text-bright); background: rgba(255,255,255,0.04); }
+    .toc-divider { height: 1px; background: var(--border); margin: 14px 0; }
+    .toc-alt a { font-size: 12px; }
+
+    /* Footer */
+    footer { border-top: 1px solid var(--border); padding: 26px 5%; text-align: center; font-size: 12.5px; color: var(--muted); }
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { color: var(--text); }
+
+    @media (max-width: 820px) {
+      .page-wrap { grid-template-columns: 1fr; gap: 0; padding: 36px 20px 80px; }
+      .toc { display: none; }
+      .doc-header h1 { font-size: 28px; }
+      .section-inner { padding: 20px 18px 20px 22px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">
+    <img src="assets/logo_white.png" alt="SideStacks" />
+    <span>SideStacks</span>
+  </a>
+  <a href="index.html" class="back">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8l4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Back
+  </a>
+</nav>
+
+<div class="page-wrap">
+<main>
+
+  <div class="doc-header">
+    <div class="badge">Legal</div>
+    <h1>Privacy Policy</h1>
+    <div class="doc-meta">
+      <span>Effective 9 April 2026</span>
+      <span>·</span>
+      <span>sidestacksapp.com</span>
+    </div>
+  </div>
+
+  <div class="section" id="intro">
+    <div class="section-inner">
+      <h2>Overview</h2>
+      <p>SideStacks is a side hustle finance tracker built and operated in Australia. This policy explains what data we collect, why we collect it, and what you can do about it.</p>
+      <p>We operate under the Australian Privacy Act 1988 (Cth) and the Australian Privacy Principles. By using the app, you're agreeing to the practices described here.</p>
+    </div>
+  </div>
+
+  <div class="section" id="collection">
+    <div class="section-inner">
+      <h2><span class="num">1</span> What We Collect</h2>
+
+      <h3>Account data</h3>
+      <p>Your name, email address, and profile photo (if you upload one). If you sign in with Google, we receive only your name and email from them — nothing else.</p>
+
+      <h3>Financial records</h3>
+      <p>Transactions, invoices, client details, ABNs, mileage trips, tax preferences, and income goals that you enter yourself. This is the core of what SideStacks stores — and it stays in your account.</p>
+
+      <h3>Bank data (optional)</h3>
+      <p>If you connect a bank via TrueLayer, we access your transaction history and account identifiers to import transactions. Your bank credentials are handled entirely by TrueLayer through a secure OAuth2 flow — SideStacks never sees them. Access tokens are stored server-side in encrypted Firebase infrastructure; they never touch your device.</p>
+
+      <h3>Photos</h3>
+      <p>Receipt images and profile pictures are stored in Firebase Storage, linked to your account.</p>
+
+      <h3>Technical data</h3>
+      <p>A push notification token (so reminders reach you) and your device type for App Check security verification. That's it — we don't run analytics and we don't track how you move through the app.</p>
+    </div>
+  </div>
+
+  <div class="section" id="use">
+    <div class="section-inner">
+      <h2><span class="num">2</span> How We Use It</h2>
+      <p>Everything we collect serves one purpose: making SideStacks work for you. Specifically, we use it to:</p>
+      <ul>
+        <li>Maintain your account and keep it secure</li>
+        <li>Store and display your financial records, invoices, and mileage logs</li>
+        <li>Calculate tax estimates and GST based on what you enter</li>
+        <li>Import bank transactions when you choose to connect a bank</li>
+        <li>Send the push notification reminders you configure</li>
+        <li>Process your subscription through your device's app store</li>
+        <li>Verify that requests to our servers come from the genuine app (Firebase App Check)</li>
+      </ul>
+      <p>We don't sell your data. We don't use it for advertising. Full stop.</p>
+    </div>
+  </div>
+
+  <div class="section" id="third-party">
+    <div class="section-inner">
+      <h2><span class="num">3</span> Third-Party Services</h2>
+      <p>Running SideStacks requires a few external providers. Here's who they are and what they do:</p>
+      <ul>
+        <li><strong>Firebase (Google)</strong> — authentication, database, file storage, push notifications, and cloud functions. <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy policy →</a></li>
+        <li><strong>TrueLayer</strong> — bank connectivity via Open Banking. <a href="https://truelayer.com/privacy" target="_blank" rel="noopener">Privacy policy →</a></li>
+        <li><strong>RevenueCat</strong> — subscription and in-app purchase management. <a href="https://www.revenuecat.com/privacy" target="_blank" rel="noopener">Privacy policy →</a></li>
+        <li><strong>Google Sign-In</strong> — optional authentication. Covered by Google's policy above.</li>
+      </ul>
+      <p>None of these providers receive your data for their own marketing purposes, and we don't share your information with anyone else.</p>
+    </div>
+  </div>
+
+  <div class="section" id="storage">
+    <div class="section-inner">
+      <h2><span class="num">4</span> Storage &amp; Security</h2>
+      <p>Your financial records and profile data live in Google Firebase. Certain preferences — theme, currency, notification settings — are stored locally on your device.</p>
+      <p>On the security side:</p>
+      <ul>
+        <li>Firebase App Check ensures only the genuine SideStacks app can reach our servers</li>
+        <li>Bank access tokens are stored server-side and never sent to your device</li>
+        <li>All server endpoints validate input to prevent abuse</li>
+        <li>You can enable biometric lock (Face ID or fingerprint) for an extra layer of protection</li>
+      </ul>
+      <p>No system is completely immune to attack, but we take reasonable, meaningful precautions.</p>
+    </div>
+  </div>
+
+  <div class="section" id="retention">
+    <div class="section-inner">
+      <h2><span class="num">5</span> Retention</h2>
+      <p>We keep your data while your account is active. Delete your account and we'll remove it from live systems within 30 days; encrypted backups are purged within 90. Disconnect a bank and its access token is deleted immediately.</p>
+    </div>
+  </div>
+
+  <div class="section" id="rights">
+    <div class="section-inner">
+      <h2><span class="num">6</span> Your Rights</h2>
+      <p>Under Australian Privacy law, you can request access to, correction of, or deletion of your personal information at any time. You can also withdraw bank account consent by disconnecting within the app.</p>
+      <p>If you have a complaint that we haven't resolved, you can contact the Office of the Australian Information Commissioner at <a href="https://www.oaic.gov.au" target="_blank" rel="noopener">oaic.gov.au</a>.</p>
+    </div>
+  </div>
+
+  <div class="section" id="children">
+    <div class="section-inner">
+      <h2><span class="num">7</span> Children</h2>
+      <p>SideStacks is designed for adults managing real income. We don't knowingly collect data from anyone under 16. If we discover we have, we'll delete it promptly.</p>
+    </div>
+  </div>
+
+  <div class="section" id="changes">
+    <div class="section-inner">
+      <h2><span class="num">8</span> Updates to This Policy</h2>
+      <p>If we make meaningful changes, we'll notify you in the app or by email. The date at the top of this page always reflects the current version.</p>
+    </div>
+  </div>
+
+  <div class="section" id="contact">
+    <div class="section-inner">
+      <h2><span class="num">9</span> Contact</h2>
+      <p>Questions about this policy or how your data is handled? Reach out directly:</p>
+      <div class="contact-box">
+        <p><strong>SideStacks</strong></p>
+        <p>Email: <a href="mailto:lantianxiao99@gmail.com">lantianxiao99@gmail.com</a></p>
+        <p>Based in Australia</p>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<aside>
+  <nav class="toc">
+    <p class="toc-label">On this page</p>
+    <ul class="toc-list">
+      <li><a href="#intro">Overview</a></li>
+      <li><a href="#collection">What We Collect</a></li>
+      <li><a href="#use">How We Use It</a></li>
+      <li><a href="#third-party">Third-Party Services</a></li>
+      <li><a href="#storage">Storage &amp; Security</a></li>
+      <li><a href="#retention">Retention</a></li>
+      <li><a href="#rights">Your Rights</a></li>
+      <li><a href="#children">Children</a></li>
+      <li><a href="#changes">Updates</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+    <div class="toc-divider"></div>
+    <ul class="toc-list toc-alt">
+      <li><a href="terms.html">Terms of Use →</a></li>
+    </ul>
+  </nav>
+</aside>
+</div>
+
+<footer>
+  <p>© 2026 SideStacks · <a href="privacy.html">Privacy Policy</a> · <a href="terms.html">Terms of Use</a> · <a href="mailto:lantianxiao99@gmail.com">Contact</a></p>
+</footer>
+</body>
+</html>

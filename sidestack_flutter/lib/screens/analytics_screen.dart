@@ -7,6 +7,7 @@ import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import '../widgets/add_transaction_sheet.dart';
+import '../widgets/paywall_sheet.dart';
 import '../services/tax_pdf_service.dart';
 
 // Public entry point so the Dashboard can open the layout editor directly.
@@ -231,6 +232,15 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   // ── layout editor ──────────────────────────────────────────────────────────
 
+  void _showSummarySheet(BuildContext context, _SummaryData data) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _SummarySheet(data: data),
+    );
+  }
+
   void _showLayoutEditor(BuildContext context, AppProvider provider) {
     showModalBottomSheet(
       context: context,
@@ -258,7 +268,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     if (allTx.isEmpty) {
       return Scaffold(
         body: EmptyState(
-          emoji: '📊',
+          icon: Icons.bar_chart_outlined,
           title: 'No insights yet',
           subtitle: 'Log your first income or expense and your analytics will appear here automatically.',
           buttonLabel: 'Add a transaction',
@@ -442,10 +452,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       }
     }
 
-    final aiInsight = aiSentences.isEmpty
-        ? 'Log a few more transactions and come back. Once there\'s enough data, this section will surface personalised observations about how your hustles are really performing.'
-        : aiSentences.join(' ');
-
     // ── Financial health computations ────────────────────────────────────
     final marginOverTime = monthList
         .map((e) => MapEntry(
@@ -470,6 +476,54 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           3;
     }
     final projectionAnnual = projectionMonthly * 12;
+
+    // ── Structured summary data for the AI sheet ─────────────────────────
+    final profitMarginPct = filteredIncome > 0
+        ? (filteredProfit / filteredIncome * 100)
+        : 0.0;
+    final momChangePct = (monthList.length >= 2 &&
+            monthList[monthList.length - 2].value['income']! > 0)
+        ? ((monthList.last.value['income']! -
+                    monthList[monthList.length - 2].value['income']!) /
+                monthList[monthList.length - 2].value['income']! *
+                100)
+            .roundToDouble()
+        : null;
+
+    // Best stack by margin
+    final rankedStacks = provider.stacks
+        .where((s) => s.totalIncome > 0)
+        .toList()
+      ..sort((a, b) => b.profitMargin.compareTo(a.profitMargin));
+    final topStackName =
+        rankedStacks.isNotEmpty ? rankedStacks.first.name : null;
+    final topStackMargin =
+        rankedStacks.isNotEmpty ? rankedStacks.first.profitMargin : null;
+
+    final topClientPct = topClient != null && filteredIncome > 0
+        ? (clientRevMap[topClient]! / filteredIncome * 100).roundToDouble()
+        : null;
+
+    final summaryData = _SummaryData(
+      symbol: symbol,
+      income: filteredIncome,
+      expenses: filteredExpenses,
+      profit: filteredProfit,
+      profitMarginPct: profitMarginPct,
+      momChangePct: momChangePct,
+      projectionAnnual: projectionAnnual,
+      streak: streak,
+      insights: aiSentences.isEmpty
+          ? [
+              'Log a few more transactions and I\'ll surface personalised observations about how your hustles are performing.'
+            ]
+          : aiSentences,
+      topStack: topStackName,
+      topStackMargin: topStackMargin,
+      topClient: topClient,
+      topClientPct: topClientPct,
+      txCount: filteredTx.length,
+    );
 
     // ── Premium analytics data computations ───────────────────────────────
 
@@ -821,11 +875,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             ),
           );
         case kAnalyticsSectionInsights:
-          return _ChartCard(
-            title: 'What\'s happening',
-            subtitle: 'Plain-English summary of your performance',
-            child: _AiInsightCard(text: aiInsight),
-          );
+          return null; // now lives in the Summary sheet (icon in app bar)
         case kAnalyticsSectionMarginOverTime:
           if (marginOverTime.length <= 1) return null;
           return _ChartCard(
@@ -995,6 +1045,35 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               ],
             ),
             actions: [
+              // Summary icon — tapping opens the plain-English insight sheet
+              GestureDetector(
+                onTap: () => _showSummarySheet(context, summaryData),
+                child: Container(
+                  margin: const EdgeInsets.only(top: 10, bottom: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF14B8A6).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: const Color(0xFF14B8A6).withOpacity(0.35)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.insights_outlined,
+                          size: 14, color: Color(0xFF14B8A6)),
+                      SizedBox(width: 4),
+                      Text('Summary',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF14B8A6),
+                          )),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
               GestureDetector(
                 onTap: () => _showLayoutEditor(context, provider),
                 child: Container(
@@ -1784,6 +1863,322 @@ class _StackComparisonChart extends StatelessWidget {
 }
 
 // ─── AI Insight Card ──────────────────────────────────────────────────────────
+
+// ─── Summary data model ───────────────────────────────────────────────────────
+
+class _SummaryData {
+  final String symbol;
+  final double income;
+  final double expenses;
+  final double profit;
+  final double profitMarginPct;
+  final double? momChangePct;
+  final double projectionAnnual;
+  final int streak;
+  final List<String> insights;
+  final String? topStack;
+  final double? topStackMargin;
+  final String? topClient;
+  final double? topClientPct;
+  final int txCount;
+
+  const _SummaryData({
+    required this.symbol,
+    required this.income,
+    required this.expenses,
+    required this.profit,
+    required this.profitMarginPct,
+    required this.momChangePct,
+    required this.projectionAnnual,
+    required this.streak,
+    required this.insights,
+    required this.topStack,
+    required this.topStackMargin,
+    required this.topClient,
+    required this.topClientPct,
+    required this.txCount,
+  });
+}
+
+// ─── Summary bottom sheet ─────────────────────────────────────────────────────
+
+class _SummarySheet extends StatelessWidget {
+  final _SummaryData data;
+  const _SummarySheet({required this.data});
+
+  String _fmt(double v) {
+    if (v >= 1000) {
+      return '${data.symbol}${(v / 1000).toStringAsFixed(1)}k';
+    }
+    return '${data.symbol}${v.toStringAsFixed(0)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final d = data;
+    final momUp = d.momChangePct != null && d.momChangePct! >= 0;
+    final momColor = d.momChangePct == null
+        ? const Color(0xFF94A3B8)
+        : momUp
+            ? AppTheme.green
+            : AppTheme.red;
+    final momLabel = d.momChangePct == null
+        ? '—'
+        : '${momUp ? '+' : ''}${d.momChangePct!.toStringAsFixed(0)}%';
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      minChildSize: 0.4,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (_, ctrl) => Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F1117),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border.all(
+              color: const Color(0xFF14B8A6).withOpacity(0.18), width: 1),
+        ),
+        child: ListView(
+          controller: ctrl,
+          padding: EdgeInsets.zero,
+          children: [
+            // ── Handle ─────────────────────────────────────────────────
+            Center(
+              child: Container(
+                width: 36, height: 4,
+                margin: const EdgeInsets.only(top: 12, bottom: 0),
+                decoration: BoxDecoration(
+                    color: const Color(0xFF2D3748),
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+
+            // ── Header card ──────────────────────────────────────────────
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              decoration: BoxDecoration(
+                color: const Color(0xFF131820),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFF1E2535)),
+              ),
+              child: Column(
+                children: [
+                  // teal accent bar across the top
+                  Container(
+                    height: 2,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF14B8A6),
+                      borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(18)),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF14B8A6).withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                  color: const Color(0xFF14B8A6).withOpacity(0.4)),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.auto_awesome,
+                                    size: 11, color: Color(0xFF14B8A6)),
+                                SizedBox(width: 5),
+                                Text('AI Summary',
+                                    style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF14B8A6),
+                                        letterSpacing: 0.4)),
+                              ],
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '${d.txCount} transactions analysed',
+                            style: const TextStyle(
+                                fontSize: 10, color: Color(0xFF64748B)),
+                          ),
+                        ]),
+                        const SizedBox(height: 14),
+                        // Key numbers
+                        Row(children: [
+                          _StatCell(
+                            label: 'Net profit',
+                            value: _fmt(d.profit),
+                            valueColor: d.profit >= 0
+                                ? AppTheme.green
+                                : AppTheme.red,
+                          ),
+                          _divider(),
+                          _StatCell(
+                            label: 'Margin',
+                            value: '${d.profitMarginPct.toStringAsFixed(0)}%',
+                            valueColor: d.profitMarginPct > 40
+                                ? AppTheme.green
+                                : d.profitMarginPct > 15
+                                    ? const Color(0xFFFBBF24)
+                                    : AppTheme.red,
+                          ),
+                          _divider(),
+                          _StatCell(
+                            label: 'vs last month',
+                            value: momLabel,
+                            valueColor: momColor,
+                          ),
+                        ]),
+                        const SizedBox(height: 12),
+                        // Annual projection banner
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.04),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(children: [
+                            const Icon(Icons.rocket_launch_outlined,
+                                size: 14, color: Color(0xFF14B8A6)),
+                            const SizedBox(width: 8),
+                            Text(
+                              'On track for ${_fmt(d.projectionAnnual)} this year',
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFFCBD5E1),
+                                  fontWeight: FontWeight.w500),
+                            ),
+                          ]),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Insights ────────────────────────────────────────────────
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 22, 16, 8),
+              child: Text(
+                'WHAT THIS MEANS',
+                style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.0,
+                    color: Color(0xFF475569)),
+              ),
+            ),
+            ...d.insights.asMap().entries.map((entry) {
+              final i = entry.key;
+              final text = entry.value;
+              final icons = [
+                Icons.trending_up_outlined,
+                Icons.account_balance_wallet_outlined,
+                Icons.pie_chart_outline,
+                Icons.bolt_outlined,
+                Icons.people_outline,
+                Icons.flag_outlined,
+              ];
+              final icon = icons[i % icons.length];
+              return Padding(
+                padding:
+                    const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF161B27),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFF1E2535)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 30, height: 30,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF14B8A6).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(icon,
+                            size: 15, color: const Color(0xFF14B8A6)),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          text,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            height: 1.6,
+                            color: Color(0xFFCBD5E1),
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+
+            // ── Footer ──────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+              child: Text(
+                'Based on ${d.txCount} logged transactions across ${DateTime.now().year}.',
+                style: const TextStyle(
+                    fontSize: 10, color: Color(0xFF334155)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _divider() => Container(
+      width: 1,
+      height: 34,
+      margin: const EdgeInsets.symmetric(horizontal: 12),
+      color: const Color(0xFF1E2D3D));
+}
+
+class _StatCell extends StatelessWidget {
+  final String label, value;
+  final Color valueColor;
+  const _StatCell(
+      {required this.label, required this.value, required this.valueColor});
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(value,
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: valueColor,
+                    fontFamily: 'Courier')),
+            const SizedBox(height: 2),
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 10, color: Color(0xFF64748B)),
+                textAlign: TextAlign.center),
+          ],
+        ),
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _AiInsightCard extends StatelessWidget {
   final String text;

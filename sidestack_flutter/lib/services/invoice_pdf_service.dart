@@ -83,6 +83,9 @@ Future<void> shareInvoicePdf(InvoiceData data) async {
   );
 }
 
+/// Returns the raw PDF bytes — useful for in-app preview via PdfPreview.
+Future<Uint8List> buildInvoicePdfBytes(InvoiceData data) => _buildInvoice(data);
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PDF construction
 // ─────────────────────────────────────────────────────────────────────────────

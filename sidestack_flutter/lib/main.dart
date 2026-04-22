@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -14,6 +15,7 @@ import 'theme/app_theme.dart';
 import 'screens/main_shell.dart';
 import 'screens/auth_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/username_setup_screen.dart';
 import 'screens/bank_import_screen.dart';
 import 'services/notification_service.dart';
 import 'services/purchase_service.dart';
@@ -30,8 +32,18 @@ void main() async {
   // registered debug fingerprint). Falls back gracefully if unavailable.
   await FirebaseAppCheck.instance.activate(
     androidProvider: AndroidProvider.playIntegrity,
-    appleProvider: AppleProvider.deviceCheck,
+    appleProvider: kDebugMode ? AppleProvider.debug : AppleProvider.deviceCheck,
   );
+
+  // Print App Check debug token so it's visible in flutter run output
+  if (kDebugMode) {
+    try {
+      final token = await FirebaseAppCheck.instance.getToken(true);
+      debugPrint('🔑 App Check token obtained (debug mode active)');
+    } catch (e) {
+      debugPrint('⚠️ App Check token error: $e');
+    }
+  }
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -132,6 +144,9 @@ class RootScreen extends StatelessWidget {
     }
 
     if (!auth.isSignedIn) return const AuthScreen();
+
+    // OAuth users who haven't chosen a username yet.
+    if (auth.needsUsernameSetup) return const UsernameSetupScreen();
 
     // Wait for prefs to load before deciding onboarding vs shell.
     if (!app.isLoaded) {

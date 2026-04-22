@@ -297,7 +297,7 @@ class _CsvImportSheetState extends State<_CsvImportSheet> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(children: [
-              const Text('🏦', style: TextStyle(fontSize: 20)),
+              const Icon(Icons.account_balance_outlined, size: 20, color: AppTheme.accent),
               const SizedBox(width: 10),
               Text(
                 _step == _ImportStep.pick
@@ -366,7 +366,7 @@ class _CsvImportSheetState extends State<_CsvImportSheet> {
               style: BorderStyle.solid),
         ),
         child: Column(children: [
-          const Text('📂', style: TextStyle(fontSize: 36)),
+          const Icon(Icons.folder_open_outlined, size: 36, color: AppTheme.accent),
           const SizedBox(height: 12),
           Text('Select your bank export',
               style: TextStyle(

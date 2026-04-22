@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 
 enum HustleType { reselling, freelance, business, content, other }
 
@@ -13,13 +14,13 @@ extension HustleTypeExtension on HustleType {
     }
   }
 
-  String get emoji {
+  IconData get icon {
     switch (this) {
-      case HustleType.reselling: return '🏷️';
-      case HustleType.freelance: return '💻';
-      case HustleType.business: return '🏪';
-      case HustleType.content: return '📱';
-      case HustleType.other: return '⚡';
+      case HustleType.reselling: return Icons.sell_outlined;
+      case HustleType.freelance: return Icons.laptop_outlined;
+      case HustleType.business: return Icons.storefront_outlined;
+      case HustleType.content:  return Icons.photo_camera_outlined;
+      case HustleType.other:    return Icons.bolt_outlined;
     }
   }
 
@@ -128,6 +129,9 @@ class Transaction {
 class SideStack {
   final String id;
   String name;
+  /// Optional trading/business name shown on invoices and exports.
+  /// If set, replaces the user's full name as the sender on all documents.
+  String? businessName;
   String? description;
   final DateTime startDate;
   HustleType hustleType;
@@ -139,6 +143,7 @@ class SideStack {
   SideStack({
     required this.id,
     required this.name,
+    this.businessName,
     this.description,
     required this.startDate,
     required this.hustleType,
@@ -229,10 +234,10 @@ class SideStack {
     final remaining = (monthlyGoalAmount! - thisMonthIncome).clamp(0, double.infinity);
 
     if (thisMonthIncome >= monthlyGoalAmount!) {
-      return '🎯 Goal hit! ${symbol}${thisMonthIncome.toStringAsFixed(0)} / ${symbol}${monthlyGoalAmount!.toStringAsFixed(0)}';
+      return 'Goal hit! ${symbol}${thisMonthIncome.toStringAsFixed(0)} / ${symbol}${monthlyGoalAmount!.toStringAsFixed(0)}';
     }
     if (ratio >= 1.0) {
-      return 'Ahead of pace 🔥';
+      return 'Ahead of pace';
     } else if (daysLeft > 0) {
       final needed = remaining / daysLeft;
       return 'Behind pace · need ${symbol}${needed.toStringAsFixed(0)}/day';
@@ -243,6 +248,7 @@ class SideStack {
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
+    'businessName': businessName,
     'description': description,
     'startDate': startDate.toIso8601String(),
     'hustleType': hustleType.name,
@@ -255,6 +261,7 @@ class SideStack {
   factory SideStack.fromJson(Map<String, dynamic> json) => SideStack(
     id: json['id'],
     name: json['name'],
+    businessName: json['businessName'] as String?,
     description: json['description'],
     startDate: DateTime.parse(json['startDate']),
     hustleType: HustleTypeExtension.fromString(json['hustleType']),
@@ -285,13 +292,13 @@ extension InvoiceStatusExtension on InvoiceStatus {
       case InvoiceStatus.overdue: return 'Overdue';
     }
   }
-  String get emoji {
+  IconData get icon {
     switch (this) {
-      case InvoiceStatus.draft: return '📝';
-      case InvoiceStatus.sent: return '📤';
-      case InvoiceStatus.viewed: return '👁️';
-      case InvoiceStatus.paid: return '✅';
-      case InvoiceStatus.overdue: return '⚠️';
+      case InvoiceStatus.draft:   return Icons.edit_outlined;
+      case InvoiceStatus.sent:    return Icons.send_outlined;
+      case InvoiceStatus.viewed:  return Icons.visibility_outlined;
+      case InvoiceStatus.paid:    return Icons.check_circle_outline;
+      case InvoiceStatus.overdue: return Icons.warning_amber_outlined;
     }
   }
   static InvoiceStatus fromString(String s) {
@@ -402,12 +409,12 @@ extension IdeaStatusExtension on IdeaStatus {
     }
   }
 
-  String get emoji {
+  IconData get icon {
     switch (this) {
-      case IdeaStatus.newIdea:   return '💡';
-      case IdeaStatus.reviewing: return '🔍';
-      case IdeaStatus.approved:  return '✅';
-      case IdeaStatus.archived:  return '📦';
+      case IdeaStatus.newIdea:   return Icons.lightbulb_outline;
+      case IdeaStatus.reviewing: return Icons.manage_search_outlined;
+      case IdeaStatus.approved:  return Icons.check_circle_outline;
+      case IdeaStatus.archived:  return Icons.inventory_2_outlined;
     }
   }
 

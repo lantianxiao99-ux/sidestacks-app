@@ -4,7 +4,9 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:provider/provider.dart';
 import '../models/models.dart';
+import '../providers/auth_provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Neutral palette — no app-brand colours
@@ -26,7 +28,12 @@ Future<void> exportStackPdf({
   required SideStack stack,
   required String currencySymbol,
 }) async {
-  final bytes = await _buildPdf(stack: stack, symbol: currencySymbol);
+  final authUser = context.read<AuthProvider>().userName ?? '';
+  // Prefer stack's business name, then user's full name
+  final userName = (stack.businessName != null && stack.businessName!.isNotEmpty)
+      ? stack.businessName!
+      : authUser;
+  final bytes = await _buildPdf(stack: stack, symbol: currencySymbol, userName: userName);
   final safeName = stack.name.replaceAll(RegExp(r'[^\w\s-]'), '').trim();
   final date = DateFormat('yyyy-MM-dd').format(DateTime.now());
   await Printing.sharePdf(bytes: bytes, filename: '${safeName}_$date.pdf');
@@ -39,6 +46,7 @@ Future<void> exportStackPdf({
 Future<Uint8List> _buildPdf({
   required SideStack stack,
   required String symbol,
+  String userName = '',
 }) async {
   final doc  = pw.Document();
   final font     = await PdfGoogleFonts.interRegular();
@@ -56,7 +64,7 @@ Future<Uint8List> _buildPdf({
     pw.MultiPage(
       pageFormat: PdfPageFormat.a4,
       margin: const pw.EdgeInsets.symmetric(horizontal: 48, vertical: 40),
-      header: (ctx) => _buildHeader(stack, fontBold, fontSemi, font),
+      header: (ctx) => _buildHeader(stack, fontBold, fontSemi, font, userName),
       footer: (ctx) => _buildFooter(ctx, font),
       build: (ctx) => [
         pw.SizedBox(height: 24),
@@ -73,7 +81,8 @@ Future<Uint8List> _buildPdf({
 // ── Header ────────────────────────────────────────────────────────────────────
 
 pw.Widget _buildHeader(
-    SideStack stack, pw.Font fontBold, pw.Font fontSemi, pw.Font font) {
+    SideStack stack, pw.Font fontBold, pw.Font fontSemi, pw.Font font,
+    [String userName = '']) {
   return pw.Container(
     padding: const pw.EdgeInsets.only(bottom: 14),
     decoration: const pw.BoxDecoration(
@@ -97,6 +106,13 @@ pw.Widget _buildHeader(
                 style: pw.TextStyle(
                     font: font, fontSize: 10, color: _kGrey500),
               ),
+              if (userName.isNotEmpty) ...[
+                pw.SizedBox(height: 2),
+                pw.Text(
+                  'Prepared by $userName',
+                  style: pw.TextStyle(font: font, fontSize: 9, color: _kGrey500),
+                ),
+              ],
             ],
           ),
         ),

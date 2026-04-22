@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:printing/printing.dart';
 import '../models/models.dart';
 import '../providers/app_provider.dart';
+// auth_provider not needed here currently
 import '../theme/app_theme.dart';
 import '../widgets/invoice_sheet.dart';
 import '../widgets/shared_widgets.dart';
+import '../services/pdf_export_service.dart';
+import '../services/tax_pdf_service.dart';
+import '../services/invoice_pdf_service.dart';
 
 // ─── Clients Hub (tab: CLIENTS | INVOICES) ───────────────────────────────────
 
@@ -42,12 +47,18 @@ class _InvoicesScreenState extends State<InvoicesScreen>
             forceElevated: innerBoxIsScrolled,
             backgroundColor: AppTheme.of(context).surface,
             surfaceTintColor: Colors.transparent,
-            title: const Text(
-              'Clients',
-              style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5),
+            title: AnimatedBuilder(
+              animation: _tabController,
+              builder: (_, __) {
+                const titles = ['Clients', 'Invoices'];
+                return Text(
+                  titles[_tabController.index],
+                  style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5),
+                );
+              },
             ),
             bottom: TabBar(
               controller: _tabController,
@@ -73,6 +84,353 @@ class _InvoicesScreenState extends State<InvoicesScreen>
         ),
       ),
     );
+  }
+}
+
+// ─── REPORTS TAB ─────────────────────────────────────────────────────────────
+
+class ReportsTab extends StatefulWidget {
+  const ReportsTab();
+  @override
+  State<ReportsTab> createState() => _ReportsTabState();
+}
+
+class _ReportsTabState extends State<ReportsTab> {
+  String? _generatingId;
+
+  Future<void> _generate(String id, Future<void> Function() action) async {
+    setState(() => _generatingId = id);
+    try {
+      await action();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Failed to generate PDF: $e'),
+          backgroundColor: AppTheme.red,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _generatingId = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<AppProvider>();
+    final symbol = provider.currencySymbol;
+    final stacks = provider.stacks;
+    final allTx = provider.allTransactions;
+
+    final totalIncome = allTx
+        .where((t) => t.type == TransactionType.income)
+        .fold(0.0, (s, t) => s + t.amount);
+    final totalExpenses = allTx
+        .where((t) => t.type == TransactionType.expense)
+        .fold(0.0, (s, t) => s + t.amount);
+
+    return CustomScrollView(
+      slivers: [
+        // ── Summary strip ─────────────────────────────────────────────
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.accentDim,
+                    AppTheme.greenDim,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.accent.withOpacity(0.2)),
+              ),
+              child: Row(children: [
+                Expanded(
+                  child: _MiniStat(
+                      label: 'Total Income', value: '$symbol${totalIncome.toStringAsFixed(0)}', color: AppTheme.green),
+                ),
+                Container(width: 1, height: 32, color: AppTheme.of(context).border),
+                Expanded(
+                  child: _MiniStat(
+                      label: 'Total Expenses', value: '$symbol${totalExpenses.toStringAsFixed(0)}', color: AppTheme.red),
+                ),
+                Container(width: 1, height: 32, color: AppTheme.of(context).border),
+                Expanded(
+                  child: _MiniStat(
+                      label: 'Net Profit',
+                      value: '$symbol${(totalIncome - totalExpenses).toStringAsFixed(0)}',
+                      color: AppTheme.accent),
+                ),
+              ]),
+            ),
+          ),
+        ),
+
+        // ── Section header ────────────────────────────────────────────
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+            child: Text(
+              'FINANCIAL REPORTS',
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                  color: AppTheme.of(context).textMuted),
+            ),
+          ),
+        ),
+
+        // ── Full financial summary ─────────────────────────────────────
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: _ReportCard(
+              id: 'tax',
+              icon: Icons.account_balance_outlined,
+              iconBg: AppTheme.accentDim,
+              iconColor: AppTheme.accent,
+              title: 'Tax Summary',
+              subtitle: 'Income, deductible expenses & estimated tax owed — ready for your accountant',
+              badge: 'PDF',
+              badgeColor: AppTheme.accent,
+              generating: _generatingId == 'tax',
+              onTap: () => _generate('tax', () async {
+                final now = DateTime.now();
+                await shareTaxReportPdf(
+                  context: context,
+                  allTransactions: provider.allTransactions,
+                  year: now.month >= 7 ? now.year : now.year - 1,
+                  taxRate: 0.25,
+                  currencySymbol: symbol,
+                );
+              }),
+            ),
+          ),
+        ),
+
+        // ── Per-stack reports ──────────────────────────────────────────
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Text(
+              'PER STACK',
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                  color: AppTheme.of(context).textMuted),
+            ),
+          ),
+        ),
+
+        if (stacks.isEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppTheme.of(context).card,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppTheme.of(context).border),
+                ),
+                child: Text(
+                  'Create a SideStack to generate per-stack PDFs',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontSize: 13, color: AppTheme.of(context).textMuted),
+                ),
+              ),
+            ),
+          )
+        else
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, i) {
+                final stack = stacks[i];
+                final income = stack.totalIncome;
+                final profit = stack.netProfit;
+                final id = 'stack_${stack.id}';
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: _ReportCard(
+                    id: id,
+                    icon: _hustleIcon(stack.hustleType),
+                    iconBg: AppTheme.accentDim,
+                    iconColor: AppTheme.accent,
+                    title: stack.name,
+                    subtitle:
+                        '$symbol${income.toStringAsFixed(0)} income · $symbol${profit.toStringAsFixed(0)} profit · ${stack.transactions.length} transactions',
+                    badge: 'PDF',
+                    badgeColor: AppTheme.green,
+                    generating: _generatingId == id,
+                    onTap: () => _generate(id, () async {
+                      await exportStackPdf(
+                        context: context,
+                        stack: stack,
+                        currencySymbol: symbol,
+                      );
+                    }),
+                  ),
+                );
+              },
+              childCount: stacks.length,
+            ),
+          ),
+
+        const SliverToBoxAdapter(child: SizedBox(height: 100)),
+      ],
+    );
+  }
+}
+
+// ─── Report card ──────────────────────────────────────────────────────────────
+
+class _ReportCard extends StatelessWidget {
+  final String id;
+  final IconData icon;
+  final Color iconBg, iconColor;
+  final String title, subtitle;
+  final String badge;
+  final Color badgeColor;
+  final bool generating;
+  final VoidCallback onTap;
+
+  const _ReportCard({
+    required this.id,
+    required this.icon,
+    required this.iconBg,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.badge,
+    required this.badgeColor,
+    required this.generating,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: generating ? null : onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: generating
+              ? AppTheme.accentDim
+              : AppTheme.of(context).card,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: generating
+                ? AppTheme.accent.withOpacity(0.4)
+                : AppTheme.of(context).border,
+          ),
+        ),
+        child: Row(children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+                color: iconBg, borderRadius: BorderRadius.circular(11)),
+            child: Icon(icon, size: 20, color: iconColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 3),
+                Text(subtitle,
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.of(context).textMuted,
+                        height: 1.4)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          if (generating)
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                  color: AppTheme.accent, strokeWidth: 2),
+            )
+          else
+            Column(
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: badgeColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(badge,
+                      style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: badgeColor)),
+                ),
+                const SizedBox(height: 4),
+                Icon(Icons.ios_share_outlined,
+                    size: 14, color: AppTheme.of(context).textMuted),
+              ],
+            ),
+        ]),
+      ),
+    );
+  }
+}
+
+// ─── Mini stat ────────────────────────────────────────────────────────────────
+
+class _MiniStat extends StatelessWidget {
+  final String label, value;
+  final Color color;
+  const _MiniStat(
+      {required this.label, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) => Column(
+        children: [
+          Text(value,
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                  fontFamily: 'Courier')),
+          const SizedBox(height: 2),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 10, color: AppTheme.of(context).textMuted),
+              textAlign: TextAlign.center),
+        ],
+      );
+}
+
+IconData _hustleIcon(HustleType type) {
+  switch (type) {
+    case HustleType.reselling:
+      return Icons.sell_outlined;
+    case HustleType.freelance:
+      return Icons.laptop_outlined;
+    case HustleType.business:
+      return Icons.storefront_outlined;
+    case HustleType.content:
+      return Icons.photo_camera_outlined;
+    case HustleType.other:
+      return Icons.bolt_outlined;
   }
 }
 
@@ -279,7 +637,7 @@ class _ClientsEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return EmptyState(
-      emoji: '🤝',
+      icon: Icons.people_outline,
       title: 'No clients yet',
       subtitle: 'Add a client name when logging income and they\'ll appear here automatically.',
     );
@@ -374,7 +732,7 @@ class _InvoicesTabState extends State<_InvoicesTab> {
                   const SizedBox(width: 8),
                   for (final status in InvoiceStatus.values) ...[
                     _Chip(
-                      label: '${status.emoji} ${status.label}',
+                      label: status.label,
                       selected: _filterStatus == status,
                       onTap: () => setState(() => _filterStatus = status),
                     ),
@@ -407,7 +765,7 @@ class _InvoicesTabState extends State<_InvoicesTab> {
                       invoice: inv,
                       stackName: stackMap[inv.stackId] ?? '',
                       symbol: symbol,
-                      onTap: () => _showStatusSheet(context, inv),
+                      onTap: () => _showInvoiceActions(context, inv, stackMap[inv.stackId] ?? ''),
                       onDelete: () => _confirmDelete(context, inv),
                     ),
                   );
@@ -417,6 +775,118 @@ class _InvoicesTabState extends State<_InvoicesTab> {
             ),
           ),
       ],
+    );
+  }
+
+  Future<void> _showInvoiceActions(BuildContext context, Invoice invoice, String stackName) async {
+    final provider = context.read<AppProvider>();
+    final symbol = provider.currencySymbol;
+
+    InvoiceData _buildData() => InvoiceData(
+      businessName: stackName.isNotEmpty ? stackName : 'My Business',
+      clientName: invoice.clientName,
+      clientEmail: invoice.clientEmail.isNotEmpty ? invoice.clientEmail : null,
+      invoiceNumber: invoice.invoiceNumber,
+      issueDate: invoice.issuedDate,
+      dueDate: invoice.dueDate,
+      currencySymbol: symbol,
+      abn: invoice.abn,
+      paymentLink: invoice.paymentLink,
+      includesGst: invoice.includesGst,
+      notes: invoice.description,
+      items: [
+        InvoiceLineItem(
+          description: invoice.description ?? 'Services',
+          quantity: 1,
+          unitPrice: invoice.amount,
+        ),
+      ],
+    );
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.of(context).surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.of(ctx).borderLight,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      invoice.clientName,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  Text(
+                    '$symbol${invoice.amount.toStringAsFixed(2)}',
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.accent),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.visibility_outlined, color: AppTheme.accent),
+              title: const Text('View PDF'),
+              onTap: () async {
+                Navigator.pop(ctx);
+                final data = _buildData();
+                final bytes = await buildInvoicePdfBytes(data);
+                if (!context.mounted) return;
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => Scaffold(
+                      appBar: AppBar(
+                        title: Text('Invoice #${invoice.invoiceNumber}'),
+                        backgroundColor: AppTheme.of(context).surface,
+                      ),
+                      body: PdfPreview(
+                        build: (_) async => bytes,
+                        canChangeOrientation: false,
+                        canChangePageFormat: false,
+                        allowSharing: true,
+                        allowPrinting: true,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.share_outlined, color: AppTheme.accent),
+              title: const Text('Share PDF'),
+              onTap: () async {
+                Navigator.pop(ctx);
+                await shareInvoicePdf(_buildData());
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.edit_outlined, color: AppTheme.of(ctx).textSecondary),
+              title: const Text('Update Status'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showStatusSheet(context, invoice);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
     );
   }
 
@@ -534,8 +1004,8 @@ class _InvoiceCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Text(invoice.status.emoji,
-                            style: const TextStyle(fontSize: 14)),
+                        Icon(invoice.status.icon,
+                            size: 14, color: statusColor),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
@@ -636,8 +1106,11 @@ class _StatusSheetState extends State<_StatusSheet> {
                     ),
                     child: Row(
                       children: [
-                        Text(s.emoji,
-                            style: const TextStyle(fontSize: 16)),
+                        Icon(s.icon,
+                            size: 18,
+                            color: _selected == s
+                                ? AppTheme.accent
+                                : AppTheme.of(context).textSecondary),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(s.label,
@@ -706,7 +1179,7 @@ class _InvoicesEmptyState extends StatelessWidget {
       children: [
         Expanded(
           child: EmptyState(
-            emoji: '🧾',
+            icon: Icons.receipt_long_outlined,
             title: 'No invoices yet',
             subtitle:
                 'Send professional invoices in seconds. See what one looks like, then create your own.',
@@ -771,7 +1244,7 @@ class _SampleInvoicePreview extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               child: Row(children: [
-                const Text('📄 Sample Invoice',
+                const Text('Sample Invoice',
                     style:
                         TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                 const Spacer(),

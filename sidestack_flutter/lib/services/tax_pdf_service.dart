@@ -4,7 +4,9 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:provider/provider.dart';
 import '../models/models.dart';
+import '../providers/auth_provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TaxPdfService — generates a self-assessment-ready tax summary PDF
@@ -34,15 +36,17 @@ Future<void> shareTaxReportPdf({
   required double taxRate,
   required String currencySymbol,
 }) async {
+  final userName = context.read<AuthProvider>().userName ?? '';
   final bytes = await _buildPdf(
     transactions: allTransactions,
     year: year,
     taxRate: taxRate,
     symbol: currencySymbol,
+    userName: userName,
   );
   await Printing.sharePdf(
     bytes: bytes,
-    filename: 'SideStacks_Tax_Report_$year.pdf',
+    filename: 'SideStacks_Tax_Report_${userName.isNotEmpty ? '${userName.replaceAll(' ', '_')}_' : ''}$year.pdf',
   );
 }
 
@@ -53,6 +57,7 @@ Future<Uint8List> _buildPdf({
   required int year,
   required double taxRate,
   required String symbol,
+  String userName = '',
 }) async {
   final doc      = pw.Document();
   final font     = await PdfGoogleFonts.interRegular();
@@ -94,7 +99,7 @@ Future<Uint8List> _buildPdf({
       pageFormat: PdfPageFormat.a4,
       margin: const pw.EdgeInsets.symmetric(horizontal: 48, vertical: 40),
       header: (ctx) =>
-          _header(year, taxRate, font, fontBold),
+          _header(year, taxRate, font, fontBold, userName),
       footer: (ctx) => _footer(ctx, font),
       build: (ctx) => [
         pw.SizedBox(height: 20),
@@ -121,7 +126,8 @@ Future<Uint8List> _buildPdf({
 // ── Header ────────────────────────────────────────────────────────────────────
 
 pw.Widget _header(
-    int year, double rate, pw.Font font, pw.Font fontBold) {
+    int year, double rate, pw.Font font, pw.Font fontBold,
+    [String userName = '']) {
   return pw.Container(
     padding: const pw.EdgeInsets.only(bottom: 12),
     decoration: const pw.BoxDecoration(
@@ -142,6 +148,13 @@ pw.Widget _header(
                 'Tax year $year  ·  ${(rate * 100).toStringAsFixed(0)}% estimated rate  ·  For reference only',
                 style: pw.TextStyle(font: font, fontSize: 9, color: _kGrey500),
               ),
+              if (userName.isNotEmpty) ...[
+                pw.SizedBox(height: 2),
+                pw.Text(
+                  'Prepared by $userName',
+                  style: pw.TextStyle(font: font, fontSize: 9, color: _kGrey500),
+                ),
+              ],
             ],
           ),
         ),

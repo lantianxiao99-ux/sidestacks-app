@@ -10,7 +10,7 @@ import '../widgets/create_stack_sheet.dart';
 // ─── Slide data ───────────────────────────────────────────────────────────────
 
 class _Slide {
-  final String emoji;
+  final IconData icon;
   final String title;
   final String subtitle;
   final List<String> bullets;
@@ -18,7 +18,7 @@ class _Slide {
   final Widget preview;
 
   const _Slide({
-    required this.emoji,
+    required this.icon,
     required this.title,
     required this.subtitle,
     required this.bullets,
@@ -51,7 +51,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   late final List<_Slide> _slides = [
     _Slide(
-      emoji: '🤯',
+      icon: Icons.psychology_outlined,
       title: 'Still guessing\nwhat you make?',
       subtitle:
           'Most side hustlers have no idea if they\'re actually profitable after costs, time, and tax. SideStacks changes that.',
@@ -64,7 +64,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       preview: const _WelcomePreview(),
     ),
     _Slide(
-      emoji: '💸',
+      icon: Icons.payments_outlined,
       title: 'Log money\nin seconds',
       subtitle:
           'No spreadsheets. No faff. Tap once, done. Your books stay clean without the pain.',
@@ -77,7 +77,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       preview: const _TransactionPreview(),
     ),
     _Slide(
-      emoji: '📊',
+      icon: Icons.bar_chart_outlined,
       title: 'Know exactly\nwhere you stand',
       subtitle:
           'Real charts, margin data, and tax estimates. No surprises at the end of the year.',
@@ -263,7 +263,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       child: Center(
                         child: Text(
                           _page == _totalPages - 1
-                              ? 'Start tracking for free ⚡'
+                              ? 'Start tracking for free'
                               : _page == 3
                                   ? (_selectedHustleType == null
                                       ? 'Skip this step'
@@ -332,9 +332,10 @@ class _SlideView extends StatelessWidget {
                         color: slide.accent.withOpacity(0.35), width: 1.5),
                   ),
                   child: Center(
-                    child: Text(
-                      slide.emoji,
-                      style: const TextStyle(fontSize: 38),
+                    child: Icon(
+                      slide.icon,
+                      size: 40,
+                      color: slide.accent,
                     ),
                   ),
                 ),
@@ -646,8 +647,7 @@ class _HustleTypeSlide extends StatelessWidget {
                     color: AppTheme.accent.withOpacity(0.35), width: 1.5),
               ),
               child: const Center(
-                  child:
-                      Text('🎯', style: TextStyle(fontSize: 38))),
+                  child: Icon(Icons.track_changes_outlined, size: 40, color: AppTheme.accent)),
             ),
           ),
           const SizedBox(height: 24),
@@ -692,8 +692,8 @@ class _HustleTypeSlide extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    Text(t.emoji,
-                        style: const TextStyle(fontSize: 22)),
+                    Icon(t.icon, size: 22,
+                        color: active ? AppTheme.accent : theme.textSecondary),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -765,8 +765,7 @@ class _MonthlyGoalSlide extends StatelessWidget {
                     color: AppTheme.green.withOpacity(0.35), width: 1.5),
               ),
               child: const Center(
-                  child:
-                      Text('💰', style: TextStyle(fontSize: 38))),
+                  child: Icon(Icons.savings_outlined, size: 40, color: AppTheme.green)),
             ),
           ),
           const SizedBox(height: 24),
@@ -845,7 +844,7 @@ class _MonthlyGoalSlide extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Text('💡', style: TextStyle(fontSize: 16)),
+                const Icon(Icons.lightbulb_outline, size: 16, color: AppTheme.green),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(

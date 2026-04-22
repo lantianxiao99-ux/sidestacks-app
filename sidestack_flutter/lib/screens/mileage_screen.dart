@@ -106,8 +106,8 @@ class _MileageScreenState extends State<MileageScreen> {
                   children: [
                     Row(
                       children: [
-                        Text('🚗',
-                            style: const TextStyle(fontSize: 22)),
+                        const Icon(Icons.directions_car_outlined,
+                            size: 22, color: AppTheme.accent),
                         const SizedBox(width: 10),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -185,8 +185,8 @@ class _MileageScreenState extends State<MileageScreen> {
                         shape: BoxShape.circle,
                       ),
                       child: const Center(
-                        child: Text('🗺️',
-                            style: TextStyle(fontSize: 28)),
+                        child: const Icon(Icons.map_outlined,
+                            size: 32, color: AppTheme.accent),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -297,7 +297,7 @@ class _TripCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Text('🚗', style: TextStyle(fontSize: 13)),
+                      const Icon(Icons.directions_car_outlined, size: 13, color: AppTheme.accent),
                       const SizedBox(width: 6),
                       Text(
                         trip.purpose,

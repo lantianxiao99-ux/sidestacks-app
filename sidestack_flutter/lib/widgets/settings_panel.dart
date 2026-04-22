@@ -8,6 +8,15 @@ import '../providers/app_provider.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../services/csv_export_service.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+const _kPrivacyUrl = 'https://lantianxiao99-ux.github.io/sidestacks-legal/privacy.html';
+const _kTermsUrl   = 'https://lantianxiao99-ux.github.io/sidestacks-legal/terms.html';
+
+Future<void> _openLegalUrl(String url) async {
+  final uri = Uri.parse(url);
+  if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+}
 
 // ─── Theme helpers ─────────────────────────────────────────────────────────────
 const _kThemeModes = [ThemeMode.system, ThemeMode.light, ThemeMode.dark];
@@ -156,7 +165,7 @@ class _SettingsPanelBody extends StatelessWidget {
                       Border.all(color: AppTheme.accent.withOpacity(0.35)),
                 ),
                 child: Row(children: [
-                  const Text('⚡', style: TextStyle(fontSize: 22)),
+                  const Icon(Icons.bolt_outlined, size: 22, color: AppTheme.accent),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -451,9 +460,37 @@ class _SettingsPanelBody extends StatelessWidget {
               ),
             ]),
 
+            const SizedBox(height: 10),
+
+            // ── Legal ──────────────────────────────────────────────────
+            _Section(children: [
+              GestureDetector(
+                onTap: () => _openLegalUrl(_kPrivacyUrl),
+                child: _RowWidget(
+                  icon: Icons.shield_outlined,
+                  iconBg: AppTheme.accentDim,
+                  iconColor: AppTheme.accent,
+                  label: 'Privacy Policy',
+                  trailing: '',
+                  showChevron: true,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => _openLegalUrl(_kTermsUrl),
+                child: _RowWidget(
+                  icon: Icons.description_outlined,
+                  iconBg: AppTheme.accentDim,
+                  iconColor: AppTheme.accent,
+                  label: 'Terms of Service',
+                  trailing: '',
+                  showChevron: true,
+                ),
+              ),
+            ]),
+
             const SizedBox(height: 20),
             Center(
-              child: Text('SideStacks v1.0 ⚡',
+              child: Text('SideStacks v1.0',
                   style: TextStyle(
                       fontSize: 10,
                       color: AppTheme.of(context).textMuted)),
@@ -663,7 +700,7 @@ class _AvatarPickerState extends State<_AvatarPicker> {
       if (widget.userId == null) throw Exception('Not signed in');
       final ref = FirebaseStorage.instance
           .ref()
-          .child('profilePictures/${widget.userId}.jpg');
+          .child('profile_pictures/${widget.userId}/avatar.jpg');
       await ref.putFile(File(file.path));
       final url = await ref.getDownloadURL();
       widget.onUploaded(url);
@@ -789,8 +826,8 @@ void _showArchivedStacks(BuildContext context, AppProvider provider) {
                   border: Border.all(color: AppTheme.of(context).border),
                 ),
                 child: Row(children: [
-                  Text(stack.hustleType.emoji,
-                      style: TextStyle(fontSize: 20)),
+                  Icon(stack.hustleType.icon, size: 20,
+                      color: AppTheme.of(context).textSecondary),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(

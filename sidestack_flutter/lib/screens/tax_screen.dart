@@ -6,6 +6,7 @@ import '../providers/mileage_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import 'mileage_screen.dart';
+import '../services/tax_pdf_service.dart';
 
 // ─── Tax-year helpers ─────────────────────────────────────────────────────────
 //
@@ -65,6 +66,7 @@ class TaxScreen extends StatefulWidget {
 class _TaxScreenState extends State<TaxScreen> {
   // 0 = current tax year, -1 = one year back, etc.
   int _yearOffset = 0;
+  bool _generating = false;
 
   // ── AU financial year helpers ──────────────────────────────────────────────
   // The "reference" date used to compute the active tax year window.
@@ -73,6 +75,30 @@ class _TaxScreenState extends State<TaxScreen> {
     if (_yearOffset == 0) return now;
     final start = _auTaxYearStart(now);
     return DateTime(start.year + _yearOffset, start.month, start.day);
+  }
+
+  Future<void> _generateSummary(
+      BuildContext ctx, AppProvider provider, bool isAU) async {
+    setState(() => _generating = true);
+    try {
+      await shareTaxReportPdf(
+        context: ctx,
+        allTransactions: provider.allTransactions,
+        year: isAU ? _auYearStart.year : _calYear,
+        taxRate: provider.taxRate,
+        currencySymbol: provider.currencySymbol,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+          content: Text('Could not generate summary: $e'),
+          backgroundColor: AppTheme.red,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _generating = false);
+    }
   }
 
   DateTime get _auYearStart => _auTaxYearStart(_ref);
@@ -172,31 +198,27 @@ class _TaxScreenState extends State<TaxScreen> {
           SliverAppBar(
             floating: true,
             pinned: false,
-            expandedHeight: 72,
-            flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-              title: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    'Tax',
-                    style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.4,
-                        color: AppTheme.of(context).textPrimary),
-                  ),
-                  const Spacer(),
-                  _TaxYearPicker(
-                    label: _resolvedYearLabel(isAU),
-                    canGoBack:    true,
-                    canGoForward: _yearOffset < 0,
-                    onBack:    () => setState(() => _yearOffset--),
-                    onForward: () => setState(() => _yearOffset++),
-                  ),
-                ],
-              ),
+            titleSpacing: 20,
+            title: Text(
+              'Estimates',
+              style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.4,
+                  color: AppTheme.of(context).textPrimary),
             ),
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: _TaxYearPicker(
+                  label: _resolvedYearLabel(isAU),
+                  canGoBack:    true,
+                  canGoForward: _yearOffset < 0,
+                  onBack:    () => setState(() => _yearOffset--),
+                  onForward: () => setState(() => _yearOffset++),
+                ),
+              ),
+            ],
           ),
 
           // ── No stacks yet — helpful empty state ───────────────────────────
@@ -298,6 +320,29 @@ class _TaxScreenState extends State<TaxScreen> {
                       sym: sym),
                 ),
               ),
+
+            // ── Estimate settings (tax rate, mileage rate) ────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                child: _TaxSettingsCard(isAU: isAU),
+              ),
+            ),
+
+            // ── Generate Summary ──────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                child: _GenerateSummaryCard(
+                  generating: _generating,
+                  yearLabel: _resolvedYearLabel(isAU),
+                  hasData: !provider.stacks.isEmpty,
+                  onGenerate: provider.stacks.isEmpty
+                      ? null
+                      : () => _generateSummary(context, provider, isAU),
+                ),
+              ),
+            ),
 
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
@@ -494,7 +539,7 @@ class _EstimatedTaxCard extends StatelessWidget {
                   color: AppTheme.amber.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(10)),
               child: const Center(
-                  child: Text('🧾', style: TextStyle(fontSize: 17))),
+                  child: Icon(Icons.receipt_long_outlined, size: 17, color: AppTheme.amber)),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -660,7 +705,7 @@ class _DeductibleExpensesCardState extends State<_DeductibleExpensesCard> {
                     color: AppTheme.green.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10)),
                 child: const Center(
-                    child: Text('📋', style: TextStyle(fontSize: 17))),
+                    child: Icon(Icons.receipt_long_outlined, size: 17, color: AppTheme.green)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -814,7 +859,7 @@ class _MileageDeductionCard extends StatelessWidget {
                   color: purple.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(10)),
               child: const Center(
-                  child: Text('🚗', style: TextStyle(fontSize: 17))),
+                  child: Icon(Icons.directions_car_outlined, size: 17, color: purple)),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1047,8 +1092,11 @@ class _BasSummaryCard extends StatelessWidget {
                         : const Color(0xFFF59E0B)),
               ),
               child: Row(children: [
-                Text(overThreshold ? '⚠️' : '📊',
-                    style: const TextStyle(fontSize: 14)),
+                Icon(
+                  overThreshold ? Icons.warning_amber_outlined : Icons.bar_chart_outlined,
+                  size: 16,
+                  color: overThreshold ? AppTheme.red : const Color(0xFFF59E0B),
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -1126,7 +1174,7 @@ class _OutstandingInvoicesCard extends StatelessWidget {
         border: Border.all(color: AppTheme.amber.withOpacity(0.25)),
       ),
       child: Row(children: [
-        const Text('📨', style: TextStyle(fontSize: 18)),
+        const Icon(Icons.mark_email_unread_outlined, size: 18, color: AppTheme.amber),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -1177,7 +1225,7 @@ class _SetAsideTip extends StatelessWidget {
         border: Border.all(color: AppTheme.accent.withOpacity(0.2)),
       ),
       child: Row(children: [
-        const Text('💡', style: TextStyle(fontSize: 16)),
+        const Icon(Icons.lightbulb_outline, size: 16, color: AppTheme.accent),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
@@ -1191,6 +1239,324 @@ class _SetAsideTip extends StatelessWidget {
           ),
         ),
       ]),
+    );
+  }
+}
+
+// ─── Generate Summary card ────────────────────────────────────────────────────
+
+class _GenerateSummaryCard extends StatelessWidget {
+  final bool generating;
+  final bool hasData;
+  final String yearLabel;
+  final VoidCallback? onGenerate;
+
+  const _GenerateSummaryCard({
+    required this.generating,
+    required this.hasData,
+    required this.yearLabel,
+    required this.onGenerate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: generating ? null : onGenerate,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        decoration: BoxDecoration(
+          color: AppTheme.accentDim,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppTheme.accent.withOpacity(0.25)),
+        ),
+        child: Row(children: [
+          generating
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: AppTheme.accent))
+              : const Icon(Icons.picture_as_pdf_outlined,
+                  size: 18, color: AppTheme.accent),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Generate Tax Summary',
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.accent)),
+                Text(
+                  hasData
+                      ? 'Export $yearLabel as a PDF — estimates only'
+                      : 'Add transactions to generate a summary',
+                  style: const TextStyle(
+                      fontSize: 11,
+                      color: AppTheme.accent,
+                      fontWeight: FontWeight.w400),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.chevron_right,
+              size: 16,
+              color: AppTheme.accent.withOpacity(onGenerate != null ? 0.8 : 0.3)),
+        ]),
+      ),
+    );
+  }
+}
+
+// ─── Tax settings card ────────────────────────────────────────────────────────
+
+class _TaxSettingsCard extends StatefulWidget {
+  final bool isAU;
+  const _TaxSettingsCard({required this.isAU});
+
+  @override
+  State<_TaxSettingsCard> createState() => _TaxSettingsCardState();
+}
+
+class _TaxSettingsCardState extends State<_TaxSettingsCard> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<AppProvider>();
+    final colors = AppTheme.of(context);
+    final taxPct = (provider.taxRate * 100).round();
+
+    return GestureDetector(
+      onTap: () => setState(() => _expanded = !_expanded),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: colors.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: colors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Header row ─────────────────────────────────────────────────
+            Row(children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                    color: AppTheme.accent.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10)),
+                child: const Center(
+                    child: Icon(Icons.tune_outlined,
+                        size: 17, color: AppTheme.accent)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('ESTIMATE SETTINGS',
+                        style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.8,
+                            color: colors.textMuted)),
+                    Text('$taxPct% income tax · tap to adjust',
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: colors.textPrimary)),
+                  ],
+                ),
+              ),
+              AnimatedRotation(
+                turns: _expanded ? 0.5 : 0,
+                duration: const Duration(milliseconds: 200),
+                child: Icon(Icons.expand_more,
+                    size: 18, color: colors.textMuted),
+              ),
+            ]),
+
+            if (_expanded) ...[
+              const SizedBox(height: 14),
+              Divider(height: 1, color: colors.border),
+              const SizedBox(height: 14),
+
+              // ── Income tax rate ───────────────────────────────────────────
+              Row(children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Income tax rate',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: colors.textPrimary)),
+                      Text('Applied to your taxable profit',
+                          style: TextStyle(
+                              fontSize: 11, color: colors.textSecondary)),
+                    ],
+                  ),
+                ),
+                _RateBtn(
+                  icon: Icons.remove,
+                  enabled: provider.taxRate > 0.01,
+                  onTap: () =>
+                      provider.setTaxRate(provider.taxRate - 0.01),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  width: 54,
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.symmetric(vertical: 7),
+                  decoration: BoxDecoration(
+                    color: AppTheme.amber.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text('$taxPct%',
+                      style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.amber)),
+                ),
+                const SizedBox(width: 8),
+                _RateBtn(
+                  icon: Icons.add,
+                  enabled: provider.taxRate < 0.60,
+                  onTap: () =>
+                      provider.setTaxRate(provider.taxRate + 0.01),
+                ),
+              ]),
+
+              // ── Mileage rate (non-AU only) ────────────────────────────────
+              if (!widget.isAU) ...[
+                const SizedBox(height: 14),
+                Row(children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                            'Mileage rate (per ${provider.mileageUseKm ? 'km' : 'mi'})',
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: colors.textPrimary)),
+                        Text('Used to calculate mileage deductions',
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: colors.textSecondary)),
+                      ],
+                    ),
+                  ),
+                  _RateBtn(
+                    icon: Icons.remove,
+                    enabled: provider.customMileageRate > 0.01,
+                    onTap: () => provider.setCustomMileageRate(
+                        provider.customMileageRate - 0.01),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 66,
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(vertical: 7),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                        '\$${provider.customMileageRate.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF8B5CF6))),
+                  ),
+                  const SizedBox(width: 8),
+                  _RateBtn(
+                    icon: Icons.add,
+                    enabled: provider.customMileageRate < 5.0,
+                    onTap: () => provider.setCustomMileageRate(
+                        provider.customMileageRate + 0.01),
+                  ),
+                ]),
+              ] else ...[
+                // AU: show ATO rate as read-only
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: colors.background,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: colors.border),
+                  ),
+                  child: Row(children: [
+                    const Text('🇦🇺',
+                        style: TextStyle(fontSize: 14)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'ATO mileage: \$0.85/km (set by ATO, capped at 5,000 km/year)',
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: colors.textSecondary,
+                            height: 1.4),
+                      ),
+                    ),
+                  ]),
+                ),
+              ],
+
+              const SizedBox(height: 12),
+              Text(
+                'These are estimates only. Consult a qualified accountant for your actual obligations.',
+                style: TextStyle(
+                    fontSize: 10,
+                    color: colors.textMuted,
+                    height: 1.45,
+                    fontStyle: FontStyle.italic),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Rate adjustment button ───────────────────────────────────────────────────
+
+class _RateBtn extends StatelessWidget {
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
+  const _RateBtn(
+      {required this.icon, required this.enabled, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.of(context);
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: colors.card,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: colors.border),
+        ),
+        child: Icon(icon,
+            size: 14,
+            color: enabled
+                ? colors.textPrimary
+                : colors.textMuted.withOpacity(0.25)),
+      ),
     );
   }
 }
@@ -1215,7 +1581,7 @@ class _TaxEmptyState extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Center(
-                  child: Text('🧾', style: TextStyle(fontSize: 32))),
+                  child: Icon(Icons.receipt_long_outlined, size: 36, color: AppTheme.amber)),
             ),
             const SizedBox(height: 20),
             const Text(

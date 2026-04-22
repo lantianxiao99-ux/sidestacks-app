@@ -60,3 +60,4 @@ functions/lib/
 
 # Android build reports
 android/build/
+functions/.env.*

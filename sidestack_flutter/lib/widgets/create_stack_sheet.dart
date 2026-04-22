@@ -8,12 +8,10 @@ import 'shared_widgets.dart';
 // ─── Templates ────────────────────────────────────────────────────────────────
 
 class _StackTemplate {
-  final String emoji;
   final String name;
   final String description;
   final HustleType type;
   const _StackTemplate({
-    required this.emoji,
     required this.name,
     required this.description,
     required this.type,
@@ -22,49 +20,41 @@ class _StackTemplate {
 
 const _kTemplates = [
   _StackTemplate(
-    emoji: '💻',
     name: 'Freelance Dev',
     description: 'Client projects, consulting & code work',
     type: HustleType.freelance,
   ),
   _StackTemplate(
-    emoji: '🎨',
     name: 'Design Work',
     description: 'Logos, branding & creative services',
     type: HustleType.freelance,
   ),
   _StackTemplate(
-    emoji: '🏷️',
     name: 'Reselling',
     description: 'Flipping products online or in person',
     type: HustleType.reselling,
   ),
   _StackTemplate(
-    emoji: '📱',
     name: 'Content Creator',
     description: 'YouTube, TikTok, brand deals & sponsorships',
     type: HustleType.content,
   ),
   _StackTemplate(
-    emoji: '📸',
     name: 'Photography',
     description: 'Shoots, editing & licensing',
     type: HustleType.freelance,
   ),
   _StackTemplate(
-    emoji: '🎓',
     name: 'Tutoring',
     description: 'Teaching, coaching & courses',
     type: HustleType.other,
   ),
   _StackTemplate(
-    emoji: '🚗',
     name: 'Delivery / Gigs',
     description: 'Uber, DoorDash, Instacart & similar',
     type: HustleType.other,
   ),
   _StackTemplate(
-    emoji: '🏪',
     name: 'Online Store',
     description: 'Etsy, Shopify or own product line',
     type: HustleType.business,
@@ -105,6 +95,7 @@ class CreateStackSheet extends StatefulWidget {
 
 class _CreateStackSheetState extends State<CreateStackSheet> {
   final _nameController = TextEditingController();
+  final _businessNameController = TextEditingController();
   final _descController = TextEditingController();
   late HustleType _selectedType;
   bool _showTemplates = true;
@@ -120,6 +111,7 @@ class _CreateStackSheetState extends State<CreateStackSheet> {
   @override
   void dispose() {
     _nameController.dispose();
+    _businessNameController.dispose();
     _descController.dispose();
     super.dispose();
   }
@@ -133,10 +125,16 @@ class _CreateStackSheetState extends State<CreateStackSheet> {
     });
   }
 
+  String? get _businessName {
+    final v = _businessNameController.text.trim();
+    return v.isEmpty ? null : v;
+  }
+
   void _submit() async {
     if (_nameController.text.trim().isEmpty) return;
     await context.read<AppProvider>().addSideStack(
       name: _nameController.text.trim(),
+      businessName: _businessName,
       description: _descController.text.trim().isEmpty
           ? null
           : _descController.text.trim(),
@@ -258,8 +256,8 @@ class _CreateStackSheetState extends State<CreateStackSheet> {
                             color: AppTheme.of(context).border),
                       ),
                       child: Row(children: [
-                        Text(t.emoji,
-                            style: TextStyle(fontSize: 18)),
+                        Icon(t.type.icon, size: 18,
+                            color: AppTheme.of(context).textSecondary),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -301,6 +299,25 @@ class _CreateStackSheetState extends State<CreateStackSheet> {
                     hintText: 'e.g. Vintage Reselling'),
                 autofocus: true,
                 onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 14),
+
+              _FieldLabel('Business name (optional)'),
+              TextField(
+                controller: _businessNameController,
+                style: TextStyle(
+                    fontSize: 14,
+                    color: AppTheme.of(context).textPrimary),
+                decoration: const InputDecoration(
+                    hintText: 'e.g. Dawes Creative Studio'),
+                textCapitalization: TextCapitalization.words,
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'Shown on invoices and exports instead of your name',
+                  style: TextStyle(fontSize: 10, color: AppTheme.of(context).textMuted),
+                ),
               ),
               const SizedBox(height: 14),
 
@@ -371,7 +388,8 @@ class _HustleTypeChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(type.emoji, style: TextStyle(fontSize: 14)),
+            Icon(type.icon, size: 14,
+                color: selected ? AppTheme.accent : AppTheme.of(context).textSecondary),
             const SizedBox(width: 6),
             Text(
               type.label,

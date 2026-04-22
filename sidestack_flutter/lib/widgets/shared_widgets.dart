@@ -468,7 +468,7 @@ class CategoryChip extends StatelessWidget {
 /// an optional single CTA button. Matches the QBSE visual pattern:
 /// illustration → one-line explanation → single button.
 class EmptyState extends StatelessWidget {
-  final String emoji;
+  final IconData icon;
   final String title;
   final String subtitle;
   final String? buttonLabel;
@@ -480,7 +480,7 @@ class EmptyState extends StatelessWidget {
 
   const EmptyState({
     super.key,
-    this.emoji = '⚡',
+    this.icon = Icons.bolt_outlined,
     required this.title,
     required this.subtitle,
     this.buttonLabel,
@@ -515,7 +515,7 @@ class EmptyState extends StatelessWidget {
                     color: AppTheme.accent.withOpacity(0.25), width: 1.5),
               ),
               child: Center(
-                child: Text(emoji, style: const TextStyle(fontSize: 36)),
+                child: Icon(icon, size: 36, color: AppTheme.accent),
               ),
             ),
             const SizedBox(height: 22),

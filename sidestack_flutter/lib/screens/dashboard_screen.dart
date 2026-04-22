@@ -176,8 +176,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text('🔥',
-                              style: TextStyle(fontSize: 13)),
+                          const Icon(Icons.local_fire_department_outlined,
+                              size: 14, color: AppTheme.amber),
                           const SizedBox(width: 4),
                           Text(
                             '${provider.currentStreak}',
@@ -459,8 +459,11 @@ class _DashboardHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final firstName = (auth.userName ?? '').split(' ').first;
-    final greetingName = firstName.isNotEmpty ? ', $firstName' : '';
+    final app = context.watch<AppProvider>();
+    final resolvedName = app.useRealName
+        ? (auth.userName ?? '').split(' ').first
+        : (app.username ?? (auth.userName ?? '').split(' ').first);
+    final greetingName = resolvedName.isNotEmpty ? ', $resolvedName' : '';
     final hustleTypes = provider.stacks.map((s) => s.hustleType).toSet();
     final stackLabel = hustleTypes.length == 1
         ? '${hustleTypes.first.label} Stacks'
@@ -500,7 +503,7 @@ void _showStreakDialog(BuildContext context, AppProvider provider) {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('🔥', style: TextStyle(fontSize: 48)),
+          const Icon(Icons.local_fire_department, size: 52, color: AppTheme.amber),
           const SizedBox(height: 12),
           Text(
             '${provider.currentStreak}-day streak!',
@@ -530,7 +533,7 @@ void _showStreakDialog(BuildContext context, AppProvider provider) {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx),
-          child: const Text('Keep going 💪',
+          child: const Text('Keep going',
               style: TextStyle(
                   color: AppTheme.accent, fontWeight: FontWeight.w700)),
         ),
@@ -571,8 +574,7 @@ class _ProfileAvatar extends StatelessWidget {
                 ),
               )
             : const Center(
-                child: Text('⚡',
-                    style: TextStyle(fontSize: 16)),
+                child: Icon(Icons.bolt_outlined, size: 18, color: AppTheme.accent),
               ),
       ),
     );
@@ -600,11 +602,11 @@ class _HealthScoreCardState extends State<_HealthScoreCard> {
     return AppTheme.red;
   }
 
-  String get _emoji {
-    if (widget.score >= 80) return '🏆';
-    if (widget.score >= 60) return '💪';
-    if (widget.score >= 40) return '📈';
-    return '⚠️';
+  IconData get _icon {
+    if (widget.score >= 80) return Icons.emoji_events_outlined;
+    if (widget.score >= 60) return Icons.trending_up;
+    if (widget.score >= 40) return Icons.show_chart;
+    return Icons.warning_amber_outlined;
   }
 
   @override
@@ -628,7 +630,7 @@ class _HealthScoreCardState extends State<_HealthScoreCard> {
         child: Column(
           children: [
             Row(children: [
-              Text(_emoji, style: const TextStyle(fontSize: 22)),
+              Icon(_icon, size: 22, color: _color),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -829,8 +831,8 @@ class _StackCard extends StatelessWidget {
                   color: AppTheme.of(context).cardAlt,
                   borderRadius: BorderRadius.circular(10)),
               child: Center(
-                  child: Text(stack.hustleType.emoji,
-                      style: const TextStyle(fontSize: 18))),
+                  child: Icon(stack.hustleType.icon, size: 20,
+                      color: AppTheme.of(context).textSecondary)),
             ),
               const SizedBox(width: 10),
               Expanded(
@@ -1064,7 +1066,7 @@ class _UpcomingPeekCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(children: [
-              const Text('💸', style: TextStyle(fontSize: 14)),
+              const Icon(Icons.account_balance_wallet_outlined, size: 14, color: AppTheme.accent),
               const SizedBox(width: 7),
               Text(
                 'UPCOMING',
@@ -1192,7 +1194,7 @@ class _MileageDashboardCard extends StatelessWidget {
             border: Border.all(color: purple.withOpacity(0.2)),
           ),
           child: Row(children: [
-            const Text('🚗', style: TextStyle(fontSize: 18)),
+            const Icon(Icons.directions_car_outlined, size: 18, color: AppTheme.accent),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -1228,7 +1230,7 @@ class _MileageDashboardCard extends StatelessWidget {
           border: Border.all(color: purple.withOpacity(0.2)),
         ),
         child: Row(children: [
-          const Text('🚗', style: TextStyle(fontSize: 18)),
+          const Icon(Icons.directions_car_outlined, size: 18, color: AppTheme.accent),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -1400,7 +1402,7 @@ class _EmptyDashboard extends StatelessWidget {
                   ],
                 ),
                 child: const Center(
-                  child: Text('⚡', style: TextStyle(fontSize: 40)),
+                  child: Icon(Icons.bolt_outlined, size: 44, color: Colors.white),
                 ),
               ),
               const SizedBox(height: 28),
@@ -1680,7 +1682,7 @@ class _GoalProgressCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        done ? '🎯 Goal smashed!' : '🎯 Monthly target',
+                        done ? 'Goal smashed!' : 'Monthly target',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
@@ -2020,10 +2022,7 @@ class _BestStackSpotlightCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Center(
-              child: Text(
-                stack.hustleType.emoji,
-                style: const TextStyle(fontSize: 20),
-              ),
+              child: Icon(stack.hustleType.icon, size: 20, color: AppTheme.accent),
             ),
           ),
           const SizedBox(width: 12),
@@ -2033,7 +2032,7 @@ class _BestStackSpotlightCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '🏆 Top hustle this month',
+                  'Top hustle this month',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,

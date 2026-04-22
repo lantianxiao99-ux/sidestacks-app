@@ -355,7 +355,7 @@ class _CompareTabState extends State<_CompareTab> {
               ),
               child: Row(
                 children: [
-                  const Text('✅', style: TextStyle(fontSize: 20)),
+                  const Icon(Icons.check_circle_outline, size: 20, color: AppTheme.green),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -723,7 +723,7 @@ class _GigColumnState extends State<_GigColumn> {
                       color: widget.winner ? AppTheme.green : theme.textPrimary)),
               if (widget.winner) ...[
                 const SizedBox(width: 4),
-                const Text('🏆', style: TextStyle(fontSize: 12)),
+                const Icon(Icons.emoji_events_outlined, size: 13, color: AppTheme.green),
               ],
             ],
           ),

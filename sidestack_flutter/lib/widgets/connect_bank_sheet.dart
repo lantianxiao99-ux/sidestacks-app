@@ -137,7 +137,7 @@ class _ConnectBankSheetState extends State<_ConnectBankSheet> {
               ),
               borderRadius: BorderRadius.circular(18),
             ),
-            child: const Center(child: Text('🏦', style: TextStyle(fontSize: 30))),
+            child: const Center(child: Icon(Icons.account_balance_outlined, size: 30, color: Colors.white)),
           ),
           const SizedBox(height: 16),
 

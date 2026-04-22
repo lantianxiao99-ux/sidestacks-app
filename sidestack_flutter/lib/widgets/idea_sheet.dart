@@ -164,10 +164,8 @@ class _IdeaSheetState extends State<_IdeaSheet> {
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                   child: Row(
                     children: [
-                      Text(
-                        _hustleType.emoji,
-                        style: const TextStyle(fontSize: 24),
-                      ),
+                      Icon(_hustleType.icon, size: 24,
+                          color: AppTheme.accent),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
@@ -284,7 +282,7 @@ class _IdeaSheetState extends State<_IdeaSheet> {
                         PrimaryButton(
                           label: _saving
                               ? 'Saving…'
-                              : (_isEdit ? 'Save Changes' : 'Save Idea 💡'),
+                              : (_isEdit ? 'Save Changes' : 'Save Idea'),
                           onPressed: _saving ? null : _save,
                         ),
                         const SizedBox(height: 16),
@@ -341,7 +339,7 @@ class _StatusBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(status.emoji, style: const TextStyle(fontSize: 11)),
+          Icon(status.icon, size: 12, color: color),
           const SizedBox(width: 5),
           Text(
             status.label,
@@ -391,8 +389,8 @@ class _HustleTypeSelector extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(t.emoji,
-                    style: const TextStyle(fontSize: 13)),
+                Icon(t.icon, size: 13,
+                    color: isSelected ? AppTheme.accent : AppTheme.of(context).textSecondary),
                 const SizedBox(width: 5),
                 Text(
                   t.label,
@@ -442,7 +440,7 @@ class _PaybackPreview extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Text('📈', style: TextStyle(fontSize: 16)),
+            const Icon(Icons.trending_up_outlined, size: 16, color: AppTheme.green),
             const SizedBox(width: 10),
             Expanded(
               child: Column(

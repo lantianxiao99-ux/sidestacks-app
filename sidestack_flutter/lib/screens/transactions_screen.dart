@@ -414,14 +414,25 @@ class _GlobalTxRow extends StatelessWidget {
                           border: Border.all(
                               color: AppTheme.of(context).border),
                         ),
-                        child: Text(
-                          '${entry.stack.hustleType.emoji} ${entry.stack.name}',
-                          style: TextStyle(
-                              fontSize: 9,
-                              color: AppTheme.of(context).textSecondary,
-                              fontWeight: FontWeight.w500),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(entry.stack.hustleType.icon,
+                                size: 9,
+                                color: AppTheme.of(context).textSecondary),
+                            const SizedBox(width: 3),
+                            Flexible(
+                              child: Text(
+                                entry.stack.name,
+                                style: TextStyle(
+                                    fontSize: 9,
+                                    color: AppTheme.of(context).textSecondary,
+                                    fontWeight: FontWeight.w500),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],

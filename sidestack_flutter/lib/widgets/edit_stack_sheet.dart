@@ -27,6 +27,7 @@ class EditStackSheet extends StatefulWidget {
 
 class _EditStackSheetState extends State<EditStackSheet> {
   late final TextEditingController _nameController;
+  late final TextEditingController _businessNameController;
   late final TextEditingController _descController;
   late final TextEditingController _monthlyGoalController;
   late final TextEditingController _goalController;
@@ -36,6 +37,8 @@ class _EditStackSheetState extends State<EditStackSheet> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.stack.name);
+    _businessNameController =
+        TextEditingController(text: widget.stack.businessName ?? '');
     _descController =
         TextEditingController(text: widget.stack.description ?? '');
     _monthlyGoalController = TextEditingController(
@@ -54,6 +57,7 @@ class _EditStackSheetState extends State<EditStackSheet> {
   @override
   void dispose() {
     _nameController.dispose();
+    _businessNameController.dispose();
     _descController.dispose();
     _monthlyGoalController.dispose();
     _goalController.dispose();
@@ -77,9 +81,15 @@ class _EditStackSheetState extends State<EditStackSheet> {
     final clearGoal =
         goalText.isEmpty && widget.stack.goalAmount != null;
 
+    final businessNameText = _businessNameController.text.trim();
+    final businessName = businessNameText.isEmpty ? null : businessNameText;
+    final clearBusinessName =
+        businessNameText.isEmpty && widget.stack.businessName != null;
     context.read<AppProvider>().updateSideStack(
       widget.stack.id,
       name: name,
+      businessName: businessName,
+      clearBusinessName: clearBusinessName,
       description: desc,
       hustleType: _hustleType,
       goalAmount: goalAmount,
@@ -138,6 +148,23 @@ class _EditStackSheetState extends State<EditStackSheet> {
           ),
           const SizedBox(height: 14),
 
+          // Business name
+          _FieldLabel('Business name (optional)'),
+          TextField(
+            controller: _businessNameController,
+            style: TextStyle(fontSize: 14, color: AppTheme.of(context).textPrimary),
+            decoration: const InputDecoration(hintText: 'e.g. Dawes Creative Studio'),
+            textCapitalization: TextCapitalization.words,
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'Shown on invoices and exports instead of your name',
+              style: TextStyle(fontSize: 10, color: AppTheme.of(context).textMuted),
+            ),
+          ),
+          const SizedBox(height: 14),
+
           // Description
           _FieldLabel('Description (optional)'),
           TextField(
@@ -172,15 +199,24 @@ class _EditStackSheetState extends State<EditStackSheet> {
                                 : AppTheme.of(context).border,
                           ),
                         ),
-                        child: Text(
-                          '${t.emoji} ${t.label}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: _hustleType == t
-                                ? AppTheme.accent
-                                : AppTheme.of(context).textSecondary,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(t.icon, size: 11,
+                                color: _hustleType == t
+                                    ? AppTheme.accent
+                                    : AppTheme.of(context).textSecondary),
+                            const SizedBox(width: 4),
+                            Text(t.label,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: _hustleType == t
+                                    ? AppTheme.accent
+                                    : AppTheme.of(context).textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ))

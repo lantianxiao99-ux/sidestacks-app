@@ -99,6 +99,8 @@ class AppProvider extends ChangeNotifier {
   String _currencySymbol = 'A\$';
   String? _profilePictureUrl;
   String? _abn; // Australian Business Number
+  String? _username; // optional handle/nickname chosen by the user
+  bool _useRealName = true; // true = show real name, false = show username
   double? _monthlyIncomeGoal; // user-set monthly income target
   ThemeMode _themeMode = ThemeMode.dark;
   String? _error;
@@ -189,6 +191,8 @@ class AppProvider extends ChangeNotifier {
   String get currencySymbol => _currencySymbol;
   String? get profilePictureUrl => _profilePictureUrl;
   String? get abn => _abn;
+  String? get username => _username;
+  bool get useRealName => _useRealName;
   double? get monthlyIncomeGoal => _monthlyIncomeGoal;
 
   /// Progress toward this month's income goal (0.0–1.0+). Null if no goal set.
@@ -605,6 +609,8 @@ class AppProvider extends ChangeNotifier {
     });
     _currencySymbol = prefs.getString('currency_$userId') ?? 'A\$';
     _abn = prefs.getString('abn_$userId');
+    _username = prefs.getString('username_$userId');
+    _useRealName = prefs.getBool('useRealName_$userId') ?? true;
     _monthlyIncomeGoal = prefs.getDouble('monthlyGoal_$userId');
     _profilePictureUrl = prefs.getString('profilePicUrl_$userId');
 
@@ -903,6 +909,28 @@ class AppProvider extends ChangeNotifier {
     await prefs.setBool('mileageUseKm_$_userId', useKm);
   }
 
+  Future<void> setUsername(String value) async {
+    if (_userId == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      await prefs.remove('username_$_userId');
+      _username = null;
+    } else {
+      await prefs.setString('username_$_userId', trimmed);
+      _username = trimmed;
+    }
+    notifyListeners();
+  }
+
+  Future<void> setUseRealName(bool value) async {
+    _useRealName = value;
+    notifyListeners();
+    if (_userId == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('useRealName_$_userId', value);
+  }
+
   Future<void> setAbn(String abn) async {
     if (_userId == null) return;
     final prefs = await SharedPreferences.getInstance();
@@ -1122,6 +1150,7 @@ class AppProvider extends ChangeNotifier {
         }
       },
       onError: (e) {
+        debugPrint('_listenToStacks error: $e');
         _error = 'Failed to load data. Check your connection.';
         _stacksLoaded = true;
         notifyListeners();
@@ -1147,6 +1176,7 @@ class AppProvider extends ChangeNotifier {
 
   Future<models.SideStack> addSideStack({
     required String name,
+    String? businessName,
     String? description,
     required models.HustleType hustleType,
     double? goalAmount,
@@ -1161,6 +1191,7 @@ class AppProvider extends ChangeNotifier {
     final stack = models.SideStack(
       id: id,
       name: name,
+      businessName: businessName,
       description: description,
       startDate: DateTime.now(),
       hustleType: hustleType,
@@ -1169,6 +1200,7 @@ class AppProvider extends ChangeNotifier {
     );
     await _stacksRef.doc(id).set({
       'name': name,
+      'businessName': businessName,
       'description': description,
       'startDate': stack.startDate.toIso8601String(),
       'hustleType': hustleType.name,
@@ -1187,6 +1219,8 @@ class AppProvider extends ChangeNotifier {
   Future<void> updateSideStack(
     String id, {
     String? name,
+    String? businessName,
+    bool clearBusinessName = false,
     String? description,
     models.HustleType? hustleType,
     double? goalAmount,
@@ -1196,6 +1230,11 @@ class AppProvider extends ChangeNotifier {
   }) async {
     final updates = <String, dynamic>{};
     if (name != null) updates['name'] = name;
+    if (clearBusinessName) {
+      updates['businessName'] = null;
+    } else if (businessName != null) {
+      updates['businessName'] = businessName;
+    }
     if (description != null) updates['description'] = description;
     if (hustleType != null) updates['hustleType'] = hustleType.name;
     if (clearGoal) {
@@ -1212,6 +1251,11 @@ class AppProvider extends ChangeNotifier {
     final i = _stacks.indexWhere((s) => s.id == id);
     if (i != -1) {
       if (name != null) _stacks[i].name = name;
+      if (clearBusinessName) {
+        _stacks[i].businessName = null;
+      } else if (businessName != null) {
+        _stacks[i].businessName = businessName;
+      }
       if (description != null) _stacks[i].description = description;
       if (hustleType != null) _stacks[i].hustleType = hustleType;
       if (clearGoal) {

@@ -24,13 +24,11 @@ void showMilestoneCelebration(
 
 // ─── Share helper ─────────────────────────────────────────────────────────────
 
-final GlobalKey _shareCardKey = GlobalKey();
-
 Future<void> _shareMilestoneCard(
-    BuildContext context, String milestoneLabel) async {
+    BuildContext context, String milestoneLabel, GlobalKey shareCardKey) async {
   try {
     // Capture the card widget as PNG bytes
-    final boundary = _shareCardKey.currentContext?.findRenderObject()
+    final boundary = shareCardKey.currentContext?.findRenderObject()
         as RenderRepaintBoundary?;
     if (boundary == null) return;
 
@@ -66,6 +64,9 @@ class _CelebrationDialog extends StatefulWidget {
 
 class _CelebrationDialogState extends State<_CelebrationDialog>
     with TickerProviderStateMixin {
+  // Key lives here so each dialog instance gets its own — prevents
+  // "Multiple widgets used the same GlobalKey" when the dialog fires twice.
+  final _shareCardKey = GlobalKey();
   late AnimationController _confettiCtrl;
   late AnimationController _cardCtrl;
   late Animation<double> _cardScale;
@@ -138,7 +139,7 @@ class _CelebrationDialogState extends State<_CelebrationDialog>
                 child: ScaleTransition(
                   scale: _cardScale,
                   child: RepaintBoundary(
-                    key: _shareCardKey,
+                    key: _shareCardKey, // instance key — safe for multiple dialogs
                     child: Container(
                       margin: const EdgeInsets.symmetric(horizontal: 40),
                       padding: const EdgeInsets.symmetric(
@@ -160,8 +161,7 @@ class _CelebrationDialogState extends State<_CelebrationDialog>
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text('🎉',
-                              style: TextStyle(fontSize: 52)),
+                          const Icon(Icons.celebration_outlined, size: 52, color: AppTheme.accent),
                           const SizedBox(height: 14),
                           const Text(
                             'Milestone unlocked',
@@ -200,7 +200,7 @@ class _CelebrationDialogState extends State<_CelebrationDialog>
                           ),
                           const SizedBox(height: 12),
                           const Text(
-                            'Keep stacking 🚀',
+                            'Keep stacking',
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
@@ -227,8 +227,8 @@ class _CelebrationDialogState extends State<_CelebrationDialog>
                                   borderRadius: BorderRadius.circular(5),
                                 ),
                                 child: const Center(
-                                  child: Text('⚡',
-                                      style: TextStyle(fontSize: 10)),
+                                  child: Icon(Icons.bolt_outlined,
+                                      size: 10, color: AppTheme.accent),
                                 ),
                               ),
                               const SizedBox(width: 6),
@@ -274,7 +274,7 @@ class _CelebrationDialogState extends State<_CelebrationDialog>
                               const SizedBox(width: 10),
                               GestureDetector(
                                 onTap: () => _shareMilestoneCard(
-                                    context, _milestoneLabel),
+                                    context, _milestoneLabel, _shareCardKey),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 20, vertical: 10),

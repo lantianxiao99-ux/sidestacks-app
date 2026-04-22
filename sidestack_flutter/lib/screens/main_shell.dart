@@ -4,9 +4,9 @@ import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../providers/app_provider.dart';
 import 'dashboard_screen.dart';
-import 'transactions_screen.dart';
-import 'analytics_screen.dart';
+import 'stacks_hub_screen.dart';
 import 'tax_screen.dart';
+import 'analytics_screen.dart';
 import 'profile_screen.dart';
 
 class MainShell extends StatefulWidget {
@@ -21,7 +21,7 @@ class _MainShellState extends State<MainShell> {
 
   final _screens = const [
     DashboardScreen(),
-    TransactionsScreen(),
+    StacksHubScreen(),
     TaxScreen(),
     AnalyticsScreen(),
     ProfileScreen(),
@@ -65,9 +65,9 @@ class _MainShellState extends State<MainShell> {
                 label: 'STACKS',
               ),
               const BottomNavigationBarItem(
-                icon: Icon(Icons.savings_outlined),
-                activeIcon: Icon(Icons.savings),
-                label: 'KEEP MORE',
+                icon: Icon(Icons.calculate_outlined),
+                activeIcon: Icon(Icons.calculate),
+                label: 'ESTIMATES',
               ),
               const BottomNavigationBarItem(
                 icon: Icon(Icons.rocket_launch_outlined),
@@ -121,7 +121,7 @@ class _AvatarNavIcon extends StatelessWidget {
   Widget _fallback() => Container(
         color: AppTheme.accentDim,
         child: const Center(
-          child: Text('⚡', style: TextStyle(fontSize: 13)),
+          child: Icon(Icons.person_outline, size: 15, color: AppTheme.accent),
         ),
       );
 }

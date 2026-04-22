@@ -87,7 +87,12 @@ class _InvoiceSheetState extends State<_InvoiceSheet> {
     final auth = context.read<AuthProvider>();
     final provider = context.read<AppProvider>();
 
-    _businessCtrl = TextEditingController(text: widget.stack.name);
+    // Business name: prefer stack's trading name, fall back to user's full name
+    final stackBusinessName = widget.stack.businessName;
+    final senderName = stackBusinessName != null && stackBusinessName.isNotEmpty
+        ? stackBusinessName
+        : (auth.userName ?? widget.stack.name);
+    _businessCtrl = TextEditingController(text: senderName);
     _businessEmailCtrl = TextEditingController(text: auth.userEmail ?? '');
     // Pre-fill ABN from provider profile if saved
     _abnCtrl = TextEditingController(text: provider.abn ?? '');
@@ -299,7 +304,7 @@ class _InvoiceSheetState extends State<_InvoiceSheet> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(children: [
-                const Text('🧾', style: TextStyle(fontSize: 20)),
+                const Icon(Icons.receipt_long_outlined, size: 20, color: AppTheme.accent),
                 const SizedBox(width: 10),
                 const Expanded(
                   child: Text('Generate Invoice',
@@ -1100,7 +1105,7 @@ class _InvoicePreviewSheet extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
               child: Row(children: [
-                const Text('📄', style: TextStyle(fontSize: 20)),
+                const Icon(Icons.description_outlined, size: 20, color: AppTheme.accent),
                 const SizedBox(width: 8),
                 const Expanded(
                   child: Text('Invoice Preview',
@@ -1368,7 +1373,7 @@ class _InvoicePreviewSheet extends StatelessWidget {
                         const SizedBox(height: 16),
                         Center(
                           child: Text(
-                            'Generated with SideStacks ⚡',
+                            'Generated with SideStacks',
                             style: TextStyle(
                                 fontSize: 9, color: const Color(0xFFD1D5DB)),
                           ),
