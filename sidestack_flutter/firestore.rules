@@ -6,10 +6,28 @@ service cloud.firestore {
     return request.auth != null && request.auth.uid == userId;
   }
 
+  // Returns true if the incoming write does NOT touch premium-gated fields.
+  // Only the Admin SDK (Cloud Functions) may set these fields.
+  function notTouchingPremiumFields() {
+    let protected = ['premium', 'lifetimePremium'];
+    return !request.resource.data.diff(resource.data).affectedKeys().hasAny(protected);
+  }
+
+  // Same check for document creation — neither field may appear at all.
+  function notSettingPremiumFields() {
+    return !('premium' in request.resource.data)
+        && !('lifetimePremium' in request.resource.data);
+  }
+
   match /databases/{database}/documents {
 
+    // ── User documents ────────────────────────────────────────────────────────
     match /users/{userId} {
-      allow read, update, create: if isOwner(userId);
+      allow read: if isOwner(userId);
+      // Clients can create their user doc but cannot self-grant premium.
+      allow create: if isOwner(userId) && notSettingPremiumFields();
+      // Clients can update their own doc but cannot change premium fields.
+      allow update: if isOwner(userId) && notTouchingPremiumFields();
       allow delete: if false;
 
       // Stacks + their nested transactions sub-collection
@@ -40,7 +58,22 @@ service cloud.firestore {
       // → denied by default (Firestore denies when no rule matches)
     }
 
-    // Deny everything outside /users
+    // ── Username index ─────────────────────────────────────────────────────────
+    // Stores {uid, email, username} keyed by lowercased username.
+    // Used for username-based sign-in and uniqueness enforcement.
+    match /usernames/{username} {
+      // Any signed-in user can read (needed for sign-in username → email lookup
+      // and for the availability check in the UI).
+      allow read: if request.auth != null;
+      // A user may only create a username doc whose uid matches their own uid.
+      // Updates and deletes are not permitted from the client — username docs
+      // are cleaned up server-side by the deleteUserData Cloud Function.
+      allow create: if request.auth != null
+          && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // ── Deny everything else ───────────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
     }

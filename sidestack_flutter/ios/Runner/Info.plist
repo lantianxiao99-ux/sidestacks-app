@@ -14,7 +14,19 @@
 				<string>sidestack</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.googleusercontent.apps</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.385054728978-fpco1g3db7boufk7huuupfqiu3jmjf72</string>
+			</array>
+		</dict>
 	</array>
+	<key>GIDClientID</key>
+	<string>385054728978-fpco1g3db7boufk7huuupfqiu3jmjf72.apps.googleusercontent.com</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>SideStacks uses Face ID to keep your financial data secure.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>

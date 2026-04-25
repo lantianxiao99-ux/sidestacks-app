@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -9,7 +8,6 @@ import '../providers/app_provider.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../services/csv_export_service.dart';
-import '../services/seed_service.dart';
 import '../widgets/paywall_sheet.dart';
 import '../services/notification_service.dart';
 import '../widgets/csv_import_sheet.dart';
@@ -161,8 +159,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           children: [
                             Text(
                               provider.useRealName
-                                  ? (auth.userName ?? 'Hustler')
-                                  : (provider.username ?? auth.userName ?? 'Hustler'),
+                                  ? (auth.userName ?? provider.firestoreDisplayName ?? 'Hustler')
+                                  : (provider.username ?? auth.userName ?? provider.firestoreDisplayName ?? 'Hustler'),
                               style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
@@ -367,13 +365,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
 
-                  // ── Debug ────────────────────────────────────────────────
-                  if (kDebugMode) ...[
-                    const SizedBox(height: 24),
-                    _SectionHeader('Developer'),
-                    _SeedDemoButton(),
-                  ],
-
                   const SizedBox(height: 60),
                 ],
               ),
@@ -415,6 +406,12 @@ class _PreferencesPage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
+          // ── Name ──────────────────────────────────────────────────────
+          _SectionHeader('Name'),
+          _Section(children: [
+            _NameEditRow(),
+          ]),
+
           // ── Display name ───────────────────────────────────────────────
           _SectionHeader('Display Name'),
           _Section(children: [
@@ -929,6 +926,11 @@ class _AccountPageState extends State<_AccountPage> {
     );
     if (confirm == true && mounted) {
       await context.read<AuthProvider>().signOut();
+      // Pop everything off the navigator so the sign-in screen is shown
+      // immediately — no need to swipe back through Profile → Account.
+      if (mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
     }
   }
 
@@ -2113,201 +2115,6 @@ void _showCurrencyPicker(BuildContext context, AppProvider provider) {
   );
 }
 
-// ─── Debug seed button ────────────────────────────────────────────────────────
-
-class _SeedDemoButton extends StatefulWidget {
-  @override
-  State<_SeedDemoButton> createState() => _SeedDemoButtonState();
-}
-
-class _SeedDemoButtonState extends State<_SeedDemoButton> {
-  bool _loading = false;
-
-  Future<void> _seed() async {
-    final auth = context.read<AuthProvider>();
-    final uid = auth.userId;
-    if (uid == null) return;
-
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.of(context).card,
-        title: const Text('Seed demo data?'),
-        content: const Text(
-            'This will DELETE all existing stacks, transactions, and invoices, '
-            'then replace them with realistic demo data. Continue?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child:
-                  const Text('Seed', style: TextStyle(color: AppTheme.red))),
-        ],
-      ),
-    );
-    if (confirm != true || !mounted) return;
-
-    setState(() => _loading = true);
-    try {
-      await SeedService.instance.seedAll(uid);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Demo data loaded — hot restart to see it'),
-          behavior: SnackBarBehavior.floating,
-        ));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Seed failed: $e'),
-          backgroundColor: AppTheme.red,
-          behavior: SnackBarBehavior.floating,
-        ));
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _clear() async {
-    final auth = context.read<AuthProvider>();
-    final uid = auth.userId;
-    if (uid == null) return;
-
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.of(context).card,
-        title: const Text('Clear all data?'),
-        content: const Text(
-            'This will permanently delete ALL stacks, transactions, and invoices.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Clear all',
-                  style: TextStyle(color: AppTheme.red))),
-        ],
-      ),
-    );
-    if (confirm != true || !mounted) return;
-
-    setState(() => _loading = true);
-    try {
-      await SeedService.instance.clearAll(uid);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('All data cleared — hot restart to refresh'),
-          behavior: SnackBarBehavior.floating,
-        ));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Clear failed: $e'),
-          backgroundColor: AppTheme.red,
-          behavior: SnackBarBehavior.floating,
-        ));
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.of(context).card,
-        borderRadius: BorderRadius.circular(16),
-        border:
-            Border.all(color: const Color(0xFF8B5CF6).withOpacity(0.35)),
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-            child: Row(children: [
-              Container(
-                width: 32, height: 32,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF8B5CF6).withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: const Center(
-                    child: Icon(Icons.eco_outlined,
-                        size: 16, color: Color(0xFF8B5CF6))),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Seed demo data',
-                        style: TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w600)),
-                    Text(
-                        'Populates account with realistic TikTok-ready data',
-                        style: TextStyle(
-                            fontSize: 10, color: Color(0xFF8B5CF6))),
-                  ],
-                ),
-              ),
-            ]),
-          ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-            child: Row(children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _loading ? null : _clear,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.red,
-                    side: BorderSide(color: AppTheme.red.withOpacity(0.5)),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                  ),
-                  child: const Text('Clear all',
-                      style: TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w700)),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                flex: 2,
-                child: FilledButton(
-                  onPressed: _loading ? null : _seed,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF8B5CF6),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                  ),
-                  child: _loading
-                      ? const SizedBox(
-                          width: 14, height: 14,
-                          child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2))
-                      : const Text('Seed demo data',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.w700)),
-                ),
-              ),
-            ]),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ─── Shared widgets ───────────────────────────────────────────────────────────
 
 class _Section extends StatelessWidget {
@@ -2501,6 +2308,146 @@ class _ToggleRow extends StatelessWidget {
       );
 }
 
+// ─── Name editor ─────────────────────────────────────────────────────────────
+
+class _NameEditRow extends StatefulWidget {
+  const _NameEditRow();
+  @override
+  State<_NameEditRow> createState() => _NameEditRowState();
+}
+
+class _NameEditRowState extends State<_NameEditRow> {
+  late TextEditingController _ctrl;
+  bool _editing = false;
+  bool _saving = false;
+  bool _saved = false;
+  String? _error;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_editing) {
+      final name = context.read<AuthProvider>().userName ?? '';
+      _ctrl = TextEditingController(text: name);
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final name = _ctrl.text.trim();
+    if (name.isEmpty) {
+      setState(() => _error = 'Name cannot be empty.');
+      return;
+    }
+    setState(() { _saving = true; _error = null; });
+    final error = await context.read<AuthProvider>().changeDisplayName(name);
+    if (!mounted) return;
+    if (error != null) {
+      setState(() { _saving = false; _error = error; });
+    } else {
+      setState(() { _saving = false; _saved = true; _editing = false; });
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) setState(() => _saved = false);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.of(context);
+    final currentName = context.watch<AuthProvider>().userName ?? '';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Container(
+              width: 32, height: 32,
+              decoration: BoxDecoration(
+                color: AppTheme.accent.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: const Icon(Icons.person_outline, size: 17, color: AppTheme.accent),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _editing
+                  ? TextField(
+                      controller: _ctrl,
+                      autofocus: true,
+                      style: TextStyle(fontSize: 13, color: colors.textPrimary),
+                      decoration: InputDecoration(
+                        hintText: 'First Last',
+                        errorText: _error,
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 6),
+                      ),
+                      onSubmitted: (_) => _saving ? null : _save(),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(currentName.isNotEmpty ? currentName : 'Not set',
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: colors.textPrimary)),
+                        Text('Shown in greetings', style: TextStyle(fontSize: 11, color: colors.textMuted)),
+                      ],
+                    ),
+            ),
+            const SizedBox(width: 8),
+            if (_editing) ...[
+              GestureDetector(
+                onTap: () => setState(() { _editing = false; _error = null; }),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  child: Text('Cancel', style: TextStyle(fontSize: 12, color: colors.textMuted)),
+                ),
+              ),
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: _saving ? null : _save,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _saved ? AppTheme.green : AppTheme.accent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: _saving
+                      ? const SizedBox(width: 14, height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : Text(_saved ? 'Saved ✓' : 'Save',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+                ),
+              ),
+            ] else
+              GestureDetector(
+                onTap: () {
+                  _ctrl.text = currentName;
+                  setState(() { _editing = true; _saved = false; });
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: colors.cardAlt,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: colors.border),
+                  ),
+                  child: Text('Edit', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: colors.textSecondary)),
+                ),
+              ),
+          ]),
+        ],
+      ),
+    );
+  }
+}
+
 // ─── Username inline editor ───────────────────────────────────────────────────
 
 class _UsernameField extends StatefulWidget {
@@ -2512,7 +2459,9 @@ class _UsernameField extends StatefulWidget {
 
 class _UsernameFieldState extends State<_UsernameField> {
   late final TextEditingController _ctrl;
+  bool _saving = false;
   bool _saved = false;
+  String? _error;
 
   @override
   void initState() {
@@ -2527,46 +2476,73 @@ class _UsernameFieldState extends State<_UsernameField> {
   }
 
   Future<void> _save() async {
-    await context.read<AppProvider>().setUsername(_ctrl.text);
-    if (mounted) {
-      setState(() => _saved = true);
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) setState(() => _saved = false);
-      });
+    final newUsername = _ctrl.text.trim();
+    if (newUsername == widget.current) return;
+    setState(() { _saving = true; _error = null; });
+
+    final auth = context.read<AuthProvider>();
+    final app = context.read<AppProvider>();
+
+    final error = await auth.changeUsername(newUsername);
+    if (!mounted) return;
+
+    if (error != null) {
+      setState(() { _saving = false; _error = error; });
+    } else {
+      // Keep local prefs in sync
+      await app.setUsername(newUsername);
+      if (mounted) {
+        setState(() { _saving = false; _saved = true; _error = null; });
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) setState(() => _saved = false);
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: TextField(
-            controller: _ctrl,
-            style: TextStyle(fontSize: 13, color: AppTheme.of(context).textPrimary),
-            decoration: InputDecoration(
-              hintText: 'e.g. GRIDMAN',
-              hintStyle: TextStyle(color: AppTheme.of(context).textMuted),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _ctrl,
+                style: TextStyle(fontSize: 13, color: AppTheme.of(context).textPrimary),
+                decoration: InputDecoration(
+                  hintText: 'e.g. jordandawes',
+                  prefixText: '@',
+                  hintStyle: TextStyle(color: AppTheme.of(context).textMuted),
+                  errorText: _error,
+                ),
+                autocorrect: false,
+                keyboardType: TextInputType.visiblePassword,
+                onChanged: (_) { if (_error != null) setState(() => _error = null); },
+                onSubmitted: (_) => _saving ? null : _save(),
+              ),
             ),
-            textCapitalization: TextCapitalization.words,
-            onSubmitted: (_) => _save(),
-          ),
-        ),
-        const SizedBox(width: 10),
-        GestureDetector(
-          onTap: _save,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: _saved ? AppTheme.green : AppTheme.accent,
-              borderRadius: BorderRadius.circular(10),
+            const SizedBox(width: 10),
+            GestureDetector(
+              onTap: _saving ? null : _save,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: _saved ? AppTheme.green : AppTheme.accent,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: _saving
+                    ? const SizedBox(width: 14, height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : Text(
+                        _saved ? 'Saved ✓' : 'Save',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
+                      ),
+              ),
             ),
-            child: Text(
-              _saved ? 'Saved' : 'Save',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
-            ),
-          ),
+          ],
         ),
       ],
     );

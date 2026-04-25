@@ -75,6 +75,69 @@ class _StackDetailScreenState extends State<StackDetailScreen>
           ],
         ),
         actions: [
+          // Export menu — Invoice, CSV, PDF collapsed into one icon
+          PopupMenuButton<String>(
+            icon: Icon(Icons.ios_share_outlined,
+                size: 20, color: AppTheme.of(context).textSecondary),
+            color: AppTheme.of(context).card,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14)),
+            onSelected: (value) {
+              final isPro = provider.isPremium;
+              if (!isPro) {
+                showPaywallSheet(context);
+                return;
+              }
+              if (value == 'invoice') {
+                showInvoiceSheet(context, stack: stack);
+              } else if (value == 'csv') {
+                _exportCsv(context, stack, provider);
+              } else if (value == 'pdf') {
+                _exportPdf(context, stack, provider);
+              }
+            },
+            itemBuilder: (_) {
+              final isPro = provider.isPremium;
+              Widget proTag() => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: AppTheme.amber.withOpacity(0.85),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text('PRO',
+                    style: TextStyle(fontSize: 7, fontWeight: FontWeight.w800, color: Colors.white)),
+              );
+              return [
+                PopupMenuItem<String>(
+                  value: 'invoice',
+                  child: Row(children: [
+                    Icon(Icons.receipt_long_outlined, size: 16, color: AppTheme.accent),
+                    const SizedBox(width: 10),
+                    const Expanded(child: Text('Invoice', style: TextStyle(fontSize: 13))),
+                    if (!isPro) proTag(),
+                  ]),
+                ),
+                PopupMenuItem<String>(
+                  value: 'csv',
+                  child: Row(children: [
+                    Icon(Icons.download_outlined, size: 16, color: AppTheme.green),
+                    const SizedBox(width: 10),
+                    const Expanded(child: Text('Export CSV', style: TextStyle(fontSize: 13))),
+                    if (!isPro) proTag(),
+                  ]),
+                ),
+                PopupMenuItem<String>(
+                  value: 'pdf',
+                  child: Row(children: [
+                    Icon(Icons.picture_as_pdf_outlined, size: 16, color: AppTheme.red),
+                    const SizedBox(width: 10),
+                    const Expanded(child: Text('Export PDF', style: TextStyle(fontSize: 13))),
+                    if (!isPro) proTag(),
+                  ]),
+                ),
+              ];
+            },
+          ),
           // Edit + archive/delete in a lean overflow menu
           PopupMenuButton<String>(
             icon: Icon(Icons.more_vert,
@@ -137,98 +200,63 @@ class _StackDetailScreenState extends State<StackDetailScreen>
       ),
       body: Column(
         children: [
-          // ── Visible premium action bar ───────────────────────────────────
-          _StackActionBar(
-            stack: stack,
-            provider: provider,
-            onExportCsv: () => _exportCsv(context, stack, provider),
-            onExportPdf: () => _exportPdf(context, stack, provider),
-            onInvoice: () => showInvoiceSheet(context, stack: stack),
-          ),
-
-          // ── Stats grid ──────────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Column(
+          // ── Stats carousel ───────────────────────────────────────────────
+          SizedBox(
+            height: 110,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: StatCard(
-                          icon: Icons.trending_up,
-                          label: 'Revenue',
-                          value: formatCurrency(stack.totalIncome, symbol),
-                          valueColor: AppTheme.green),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: StatCard(
-                          icon: Icons.trending_down,
-                          label: 'Expenses',
-                          value: formatCurrency(stack.totalExpenses, symbol),
-                          valueColor: AppTheme.red),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: StatCard(
-                          icon: Icons.account_balance_wallet_outlined,
-                          label: 'Net Profit',
-                          value: formatCurrency(stack.netProfit, symbol),
-                          valueColor: stack.netProfit >= 0
-                              ? AppTheme.green
-                              : AppTheme.red),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: StatCard(
-                          icon: Icons.percent,
-                          label: 'Margin',
-                          value: formatPercent(stack.profitMargin),
-                          valueColor: stack.profitMargin >= 0
-                              ? AppTheme.green
-                              : AppTheme.red),
-                    ),
-                  ],
-                ),
-                // ── Hourly rate row (only when hours have been logged) ──────
+                StatCard(
+                    icon: Icons.trending_up,
+                    label: 'Revenue',
+                    value: formatCurrency(stack.totalIncome, symbol),
+                    valueColor: AppTheme.green),
+                const SizedBox(width: 10),
+                StatCard(
+                    icon: Icons.trending_down,
+                    label: 'Expenses',
+                    value: formatCurrency(stack.totalExpenses, symbol),
+                    valueColor: AppTheme.red),
+                const SizedBox(width: 10),
+                StatCard(
+                    icon: Icons.account_balance_wallet_outlined,
+                    label: 'Net Profit',
+                    value: formatCurrency(stack.netProfit, symbol),
+                    valueColor: stack.netProfit >= 0 ? AppTheme.green : AppTheme.red),
+                const SizedBox(width: 10),
+                StatCard(
+                    icon: Icons.percent,
+                    label: 'Margin',
+                    value: formatPercent(stack.profitMargin),
+                    valueColor: stack.profitMargin >= 0 ? AppTheme.green : AppTheme.red),
                 if (stack.effectiveHourlyRate != null) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: StatCard(
-                          icon: Icons.timer_outlined,
-                          label: 'Hours Logged',
-                          value: '${stack.totalHoursWorked.toStringAsFixed(1)} hrs',
-                          valueColor: AppTheme.accent,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: StatCard(
-                          icon: Icons.attach_money,
-                          label: 'Effective ${symbol}/hr',
-                          value: formatCurrency(stack.effectiveHourlyRate!, symbol),
-                          valueColor: AppTheme.accent,
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 10),
+                  StatCard(
+                    icon: Icons.timer_outlined,
+                    label: 'Hours Logged',
+                    value: '${stack.totalHoursWorked.toStringAsFixed(1)} hrs',
+                    valueColor: AppTheme.accent,
                   ),
-                ],
-                if (stack.goalAmount != null || stack.monthlyGoalAmount != null) ...[
-                  const SizedBox(height: 8),
-                  _GoalProgressBar(stack: stack, symbol: symbol),
+                  const SizedBox(width: 10),
+                  StatCard(
+                    icon: Icons.attach_money,
+                    label: 'Effective ${symbol}/hr',
+                    value: formatCurrency(stack.effectiveHourlyRate!, symbol),
+                    valueColor: AppTheme.accent,
+                  ),
                 ],
               ],
             ),
           ),
+          if (stack.goalAmount != null || stack.monthlyGoalAmount != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              child: _GoalProgressBar(stack: stack, symbol: symbol),
+            ),
           // ── Tab bar ─────────────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
             child: Container(
               padding: const EdgeInsets.all(3),
               decoration: BoxDecoration(

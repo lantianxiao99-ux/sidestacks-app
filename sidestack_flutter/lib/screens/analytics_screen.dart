@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
@@ -116,10 +117,64 @@ class AnalyticsScreen extends StatefulWidget {
   State<AnalyticsScreen> createState() => _AnalyticsScreenState();
 }
 
+const _kProDismissPrefix = 'proCardDismiss_';
+const _kProDismissDays = 3;
+
+// Section IDs for the dismissible pro cards
+const _kProCardSections = [
+  kAnalyticsSectionInsightEngine,
+  kAnalyticsSectionClientIntelligence,
+  kAnalyticsSectionHourlyRate,
+  kAnalyticsSectionGoalVelocity,
+  kAnalyticsSectionAnomalies,
+];
+
 class _AnalyticsScreenState extends State<AnalyticsScreen> {
   DateTimeRange? _dateRange;
   // '1M', '3M', '6M', 'All', or null when a custom range is active
   String _selectedPreset = 'All';
+
+  // Pro card dismissal timestamps — section ID → dismissed-at time
+  final Map<String, DateTime> _proCardDismissed = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProDismissals();
+  }
+
+  Future<void> _loadProDismissals() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cutoff = DateTime.now().subtract(const Duration(days: _kProDismissDays));
+    for (final id in _kProCardSections) {
+      final ms = prefs.getInt('$_kProDismissPrefix$id');
+      if (ms != null) {
+        final dismissed = DateTime.fromMillisecondsSinceEpoch(ms);
+        if (dismissed.isAfter(cutoff)) {
+          _proCardDismissed[id] = dismissed;
+        } else {
+          // Expired — clear it
+          prefs.remove('$_kProDismissPrefix$id');
+        }
+      }
+    }
+    if (mounted) setState(() {});
+  }
+
+  /// Returns true if the pro card for [sectionId] should be shown.
+  bool _showProCard(String sectionId) {
+    final dismissed = _proCardDismissed[sectionId];
+    if (dismissed == null) return true;
+    return DateTime.now().difference(dismissed).inDays >= _kProDismissDays;
+  }
+
+  Future<void> _dismissProCard(String sectionId) async {
+    final now = DateTime.now();
+    setState(() => _proCardDismissed[sectionId] = now);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('$_kProDismissPrefix$sectionId',
+        now.millisecondsSinceEpoch);
+  }
 
   void _setPreset(String preset) {
     final now = DateTime.now();
@@ -916,11 +971,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
         case kAnalyticsSectionInsightEngine:
           if (!provider.isPremium) {
+            if (!_showProCard(kAnalyticsSectionInsightEngine)) return null;
             return _ProLockedCard(
               icon: Icons.psychology_outlined,
               title: 'Insight Engine',
               description: 'Prescriptive actions based on your data. Concentration risk, expense spikes, margin opportunities and more.',
               onUpgrade: () => showPaywallSheet(context),
+              onDismiss: () => _dismissProCard(kAnalyticsSectionInsightEngine),
             );
           }
           if (insightItems.isEmpty) return null;
@@ -932,11 +989,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
         case kAnalyticsSectionClientIntelligence:
           if (!provider.isPremium) {
+            if (!_showProCard(kAnalyticsSectionClientIntelligence)) return null;
             return _ProLockedCard(
               icon: Icons.people_outline,
               title: 'Client Intelligence',
               description: 'Revenue by client, concentration risk, and who your highest-value relationships really are.',
               onUpgrade: () => showPaywallSheet(context),
+              onDismiss: () => _dismissProCard(kAnalyticsSectionClientIntelligence),
             );
           }
           if (sortedClients.isEmpty) return null;
@@ -953,11 +1012,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
         case kAnalyticsSectionHourlyRate:
           if (!provider.isPremium) {
+            if (!_showProCard(kAnalyticsSectionHourlyRate)) return null;
             return _ProLockedCard(
               icon: Icons.timer_outlined,
               title: 'Hourly Rate Tracker',
               description: 'Your real effective hourly rate per stack. Find out which hustle is actually worth your time.',
               onUpgrade: () => showPaywallSheet(context),
+              onDismiss: () => _dismissProCard(kAnalyticsSectionHourlyRate),
             );
           }
           if (hourlyRateData.isEmpty) return null;
@@ -969,11 +1030,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
         case kAnalyticsSectionGoalVelocity:
           if (!provider.isPremium) {
+            if (!_showProCard(kAnalyticsSectionGoalVelocity)) return null;
             return _ProLockedCard(
               icon: Icons.flag_outlined,
               title: 'Goal Velocity',
               description: 'Track your monthly income goal pace and see whether you\'re on track to hit it.',
               onUpgrade: () => showPaywallSheet(context),
+              onDismiss: () => _dismissProCard(kAnalyticsSectionGoalVelocity),
             );
           }
           if (goalVelocityData.isEmpty) return null;
@@ -985,11 +1048,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
         case kAnalyticsSectionAnomalies:
           if (!provider.isPremium) {
+            if (!_showProCard(kAnalyticsSectionAnomalies)) return null;
             return _ProLockedCard(
               icon: Icons.search_outlined,
               title: 'Spending Anomalies',
               description: 'Automatically flags unusual spend in any category vs your prior period average.',
               onUpgrade: () => showPaywallSheet(context),
+              onDismiss: () => _dismissProCard(kAnalyticsSectionAnomalies),
             );
           }
           if (anomalies.isEmpty) return null;
@@ -2237,12 +2302,15 @@ class _ProLockedCard extends StatelessWidget {
   final String title;
   final String description;
   final VoidCallback onUpgrade;
+  /// Called when the user taps ✕ to hide this card for 3 days.
+  final VoidCallback? onDismiss;
 
   const _ProLockedCard({
     required this.icon,
     required this.title,
     required this.description,
     required this.onUpgrade,
+    this.onDismiss,
   });
 
   @override
@@ -2299,6 +2367,17 @@ class _ProLockedCard extends StatelessWidget {
                   ),
                 ),
               ),
+              if (onDismiss != null) ...[
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: onDismiss,
+                  child: Icon(
+                    Icons.close,
+                    size: 16,
+                    color: colors.textMuted,
+                  ),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 12),

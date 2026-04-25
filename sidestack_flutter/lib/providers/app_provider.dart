@@ -14,9 +14,8 @@ import '../services/bank_service.dart';
 import '../services/demo_service.dart';
 import 'package:intl/intl.dart';
 
-// ── Lifetime-premium whitelist ────────────────────────────────────────────────
-// Emails added here always get premium, regardless of purchase status.
-const _kLifetimePremiumEmails = <String>{'x1tx.168@gmail.com'};
+// Lifetime-premium is granted server-side by setting `lifetimePremium: true`
+// on the user's Firestore doc (users/{uid}). Never hard-code emails here.
 
 const _uuid = Uuid();
 
@@ -88,10 +87,8 @@ const _kMilestones = [1.0, 10.0, 50.0, 100.0, 500.0, 1000.0, 5000.0, 10000.0];
 
 class AppProvider extends ChangeNotifier {
   List<models.SideStack> _stacks = [];
-  List<models.Idea> _ideas = [];
   List<models.Invoice> _invoices = [];
   bool _stacksLoaded = false;
-  bool _ideasLoaded = false;
   bool _invoicesLoaded = false;
   bool _prefsLoaded = false;
   bool _hasSeenOnboarding = false;
@@ -100,13 +97,13 @@ class AppProvider extends ChangeNotifier {
   String? _profilePictureUrl;
   String? _abn; // Australian Business Number
   String? _username; // optional handle/nickname chosen by the user
+  String? _firestoreDisplayName; // display name stored in users/{uid} doc
   bool _useRealName = true; // true = show real name, false = show username
   double? _monthlyIncomeGoal; // user-set monthly income target
   ThemeMode _themeMode = ThemeMode.dark;
   String? _error;
   String? _userId;
   StreamSubscription? _subscription;
-  StreamSubscription? _ideasSubscription;
   StreamSubscription? _invoicesSubscription;
   List<String> _analyticsOrder = kDefaultAnalyticsOrder;
   Set<String> _analyticsHidden = Set.from(kDefaultAnalyticsHidden);
@@ -154,16 +151,6 @@ class AppProvider extends ChangeNotifier {
 
   bool get isLoaded => _stacksLoaded && _prefsLoaded;
 
-  // ── Ideas getters ─────────────────────────────────────────────────────────
-
-  List<models.Idea> get ideas => _ideas
-      .where((i) => i.status != models.IdeaStatus.archived)
-      .toList()
-    ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-  List<models.Idea> get allIdeas => List.unmodifiable(_ideas);
-  bool get ideasLoaded => _ideasLoaded;
-
   // ── Invoices getters ──────────────────────────────────────────────────────
 
   List<models.Invoice> get invoices => _invoices
@@ -192,6 +179,9 @@ class AppProvider extends ChangeNotifier {
   String? get profilePictureUrl => _profilePictureUrl;
   String? get abn => _abn;
   String? get username => _username;
+  /// Display name stored in Firestore — fallback when Firebase Auth displayName
+  /// is null (e.g. Apple sign-in after the first session, or a linked account).
+  String? get firestoreDisplayName => _firestoreDisplayName;
   bool get useRealName => _useRealName;
   double? get monthlyIncomeGoal => _monthlyIncomeGoal;
 
@@ -533,18 +523,16 @@ class AppProvider extends ChangeNotifier {
     if (userId == _userId) return;
     _userId = userId;
     _subscription?.cancel();
-    _ideasSubscription?.cancel();
     _invoicesSubscription?.cancel();
     _stacks = [];
-    _ideas = [];
     _invoices = [];
     _stacksLoaded = false;
-    _ideasLoaded = false;
     _invoicesLoaded = false;
     _prefsLoaded = false;
     _hasSeenOnboarding = false;
     _isPremium = false;
     _profilePictureUrl = null;
+    _firestoreDisplayName = null;
     _analyticsOrder = kDefaultAnalyticsOrder;
     _analyticsHidden = Set.from(kDefaultAnalyticsHidden);
     _taxRate = 0.20;
@@ -571,7 +559,6 @@ class AppProvider extends ChangeNotifier {
       // Log the user into RevenueCat so purchases are tied to their account
       unawaited(PurchaseService.instance.logIn(userId));
       _listenToStacks(userId);
-      _listenToIdeas(userId);
       _listenToInvoices(userId);
       _loadPrefs(userId);
     } else {
@@ -587,24 +574,21 @@ class AppProvider extends ChangeNotifier {
     _hasSeenOnboarding =
         _hasSeenOnboarding || (prefs.getBool('onboarding_$userId') ?? false);
     _isPremium = prefs.getBool('premium_$userId') ?? false;
-    // Lifetime-premium whitelist — always granted regardless of purchase
-    final email = FirebaseAuth.instance.currentUser?.email ?? '';
-    if (_kLifetimePremiumEmails.contains(email)) {
-      _isPremium = true;
-    }
-    // Verify against RevenueCat — this is the authoritative source.
-    // We do it after setting the local cache so the UI is not blocked.
+    // Verify against RevenueCat — this is the authoritative source for
+    // subscription status. We do it after setting the local cache so the UI
+    // is not blocked. lifetimePremium is read from Firestore below.
     PurchaseService.instance.isPremium.then((rcPremium) {
       if (rcPremium && !_isPremium) {
         _isPremium = true;
         prefs.setBool('premium_$userId', true);
         notifyListeners();
-      } else if (!rcPremium && _isPremium &&
-          !_kLifetimePremiumEmails.contains(email)) {
-        // RC says no active subscription and user is not on the whitelist
-        _isPremium = false;
-        prefs.setBool('premium_$userId', false);
-        notifyListeners();
+      } else if (!rcPremium && _isPremium) {
+        // RC says no active subscription — only revoke if Firestore hasn't
+        // granted lifetime access. That check happens in the Firestore block
+        // below; if _isPremium is still true after that it came from
+        // lifetimePremium and should not be revoked here.
+        // We intentionally do nothing here and let the Firestore read below
+        // be the final word on lifetime status.
       }
     });
     _currencySymbol = prefs.getString('currency_$userId') ?? 'A\$';
@@ -664,51 +648,78 @@ class AppProvider extends ChangeNotifier {
       );
     }
 
-    // Check Firestore for hasSeenOnboarding + profilePicture + premium
-    final needsFirestoreCheck =
-        !_hasSeenOnboarding || _profilePictureUrl == null || !_isPremium;
-    if (needsFirestoreCheck) {
+    // Always read the users/{uid} document for authoritative premium status,
+    // onboarding flag, profile picture, and bank connection.
+    // NOTE: __meta__ (users/{uid}/stacks/__meta__) is a Firestore-reserved
+    // document ID pattern and always throws invalid-argument — never use it.
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+      if (userDoc.exists) {
+        final userData = userDoc.data()!;
+
+        // Onboarding
+        if (!_hasSeenOnboarding && userData['hasSeenOnboarding'] == true) {
+          _hasSeenOnboarding = true;
+          await prefs.setBool('onboarding_$userId', true);
+        }
+
+        // Profile picture
+        if (_profilePictureUrl == null && userData['profilePictureUrl'] != null) {
+          _profilePictureUrl = userData['profilePictureUrl'] as String;
+          await prefs.setString('profilePicUrl_$userId', _profilePictureUrl!);
+        }
+
+        // Premium — `lifetimePremium` is set server-side only (Firestore rules
+        // block clients from writing it). RevenueCat handles subscriptions.
+        final hasLifetime = userData['lifetimePremium'] == true;
+        final hasPurchasedPremium = userData['premium'] == true;
+        if (!_isPremium && (hasLifetime || hasPurchasedPremium)) {
+          _isPremium = true;
+          await prefs.setBool('premium_$userId', true);
+        }
+        // Revoke if neither source grants premium
+        if (_isPremium && !hasLifetime && !hasPurchasedPremium) {
+          _isPremium = false;
+          await prefs.setBool('premium_$userId', false);
+        }
+
+        // Display name — stored by auth flows so it persists across providers
+        final storedName = userData['displayName'] as String?;
+        if (storedName != null && storedName.isNotEmpty) {
+          _firestoreDisplayName = storedName;
+        }
+
+        // Bank connection
+        _bankConnected = userData['bank_connected'] == true;
+        _bankInstitution = userData['bank_institution'] as String? ?? '';
+      }
+    } catch (e) {
+      debugPrint('AppProvider Firestore user doc error: $e');
+    }
+
+    // If username wasn't in SharedPreferences, look it up from Firestore.
+    // This covers the case where the user completed OAuth setup (which writes
+    // to the 'usernames' collection) but the app was reinstalled or prefs cleared.
+    if (_username == null) {
       try {
-        // Meta doc (onboarding + profile picture)
-        final metaDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userId)
-            .collection('stacks')
-            .doc('__meta__')
+        final unameSnap = await FirebaseFirestore.instance
+            .collection('usernames')
+            .where('uid', isEqualTo: userId)
+            .limit(1)
             .get();
-        if (metaDoc.exists) {
-          final data = metaDoc.data()!;
-          if (!_hasSeenOnboarding && data['hasSeenOnboarding'] == true) {
-            _hasSeenOnboarding = true;
-            await prefs.setBool('onboarding_$userId', true);
-          }
-          if (_profilePictureUrl == null &&
-              data['profilePictureUrl'] != null) {
-            _profilePictureUrl = data['profilePictureUrl'] as String;
-            await prefs.setString(
-                'profilePicUrl_$userId', _profilePictureUrl!);
+        if (unameSnap.docs.isNotEmpty) {
+          final uname = unameSnap.docs.first.data()['username'] as String?;
+          if (uname != null && uname.isNotEmpty) {
+            _username = uname;
+            await prefs.setString('username_$userId', uname);
           }
         }
-        // User doc (premium status + bank connection)
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userId)
-            .get();
-        if (userDoc.exists) {
-          final userData = userDoc.data()!;
-          if (!_isPremium && userData['premium'] == true) {
-            _isPremium = true;
-            await prefs.setBool('premium_$userId', true);
-          }
-          _bankConnected = userData['bank_connected'] == true;
-          _bankInstitution = userData['bank_institution'] as String? ?? '';
-          // Load profile picture from user doc (more reliable than __meta__)
-          if (_profilePictureUrl == null && userData['profilePictureUrl'] != null) {
-            _profilePictureUrl = userData['profilePictureUrl'] as String;
-            await prefs.setString('profilePicUrl_$userId', _profilePictureUrl!);
-          }
-        }
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('AppProvider username Firestore lookup error: $e');
+      }
     }
 
     _prefsLoaded = true;
@@ -725,10 +736,10 @@ class AppProvider extends ChangeNotifier {
       await FirebaseFirestore.instance
           .collection('users')
           .doc(_userId)
-          .collection('stacks')
-          .doc('__meta__')
           .set({'hasSeenOnboarding': true}, SetOptions(merge: true));
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('completeOnboarding Firestore error: $e');
+    }
   }
 
   /// Called by the paywall after a successful RevenueCat purchase to sync
@@ -745,15 +756,36 @@ class AppProvider extends ChangeNotifier {
   /// Returns true if the premium entitlement is now active.
   Future<bool> restorePremium() async {
     if (_userId == null) return false;
-    // Whitelist always wins without needing to hit RC
-    final email = FirebaseAuth.instance.currentUser?.email ?? '';
-    if (_kLifetimePremiumEmails.contains(email)) {
-      await upgradeToPremium();
-      return true;
-    }
     final restored = await PurchaseService.instance.restore();
     if (restored) await upgradeToPremium();
     return restored;
+  }
+
+  /// Force-reads Firestore to refresh premium status.
+  /// Use this when the user reports premium isn't activating after an admin grant.
+  Future<void> refreshPremiumStatus() async {
+    final userId = _userId;
+    if (userId == null) return;
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+      final prefs = await SharedPreferences.getInstance();
+      if (userDoc.exists) {
+        final userData = userDoc.data()!;
+        final hasLifetime = userData['lifetimePremium'] == true;
+        final hasPurchasedPremium = userData['premium'] == true;
+        final shouldBePremium = hasLifetime || hasPurchasedPremium;
+        if (shouldBePremium != _isPremium) {
+          _isPremium = shouldBePremium;
+          await prefs.setBool('premium_$userId', _isPremium);
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      debugPrint('refreshPremiumStatus error: $e');
+    }
   }
 
   // ── Bank connection ───────────────────────────────────────────────────────
@@ -1008,13 +1040,10 @@ class AppProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('profilePicUrl_$_userId', url);
     try {
-      // Save to both places for reliability
-      final userRef = FirebaseFirestore.instance.collection('users').doc(_userId);
-      await Future.wait([
-        userRef.set({'profilePictureUrl': url}, SetOptions(merge: true)),
-        userRef.collection('stacks').doc('__meta__')
-            .set({'profilePictureUrl': url}, SetOptions(merge: true)),
-      ]);
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_userId)
+          .set({'profilePictureUrl': url}, SetOptions(merge: true));
     } catch (_) {}
   }
 
@@ -1685,37 +1714,6 @@ class AppProvider extends ChangeNotifier {
     return rows.join('\n');
   }
 
-  // ── Ideas Firestore listener ──────────────────────────────────────────────
-
-  CollectionReference get _ideasRef => FirebaseFirestore.instance
-      .collection('users')
-      .doc(_userId)
-      .collection('ideas');
-
-  void _listenToIdeas(String userId) {
-    _ideasSubscription = FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('ideas')
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .listen(
-      (snapshot) {
-        _ideas = snapshot.docs
-            .map((doc) =>
-                models.Idea.fromJson({...doc.data(), 'id': doc.id}))
-            .toList();
-        _ideasLoaded = true;
-        notifyListeners();
-      },
-      onError: (e) {
-        debugPrint('_listenToIdeas error: $e');
-        _ideasLoaded = true;
-        notifyListeners();
-      },
-    );
-  }
-
   // ── Invoices Firestore listener ───────────────────────────────────────────
 
   CollectionReference get _invoicesRef =>
@@ -1744,115 +1742,6 @@ class AppProvider extends ChangeNotifier {
       _invoicesLoaded = true;
       notifyListeners();
     });
-  }
-
-  // ── Idea CRUD ──────────────────────────────────────────────────────────────
-
-  Future<models.Idea> addIdea({
-    required String title,
-    String? description,
-    required models.HustleType hustleType,
-    models.IdeaStatus status = models.IdeaStatus.newIdea,
-    double? estimatedStartupCost,
-    double? estimatedMonthlyIncome,
-    String? notes,
-  }) async {
-    final id = _uuid.v4();
-    final now = DateTime.now();
-    final idea = models.Idea(
-      id: id,
-      title: title,
-      description: description,
-      hustleType: hustleType,
-      status: status,
-      estimatedStartupCost: estimatedStartupCost,
-      estimatedMonthlyIncome: estimatedMonthlyIncome,
-      notes: notes,
-      createdAt: now,
-    );
-    await _ideasRef.doc(id).set({
-      'title': title,
-      'description': description,
-      'hustleType': hustleType.name,
-      'status': status.name,
-      'estimatedStartupCost': estimatedStartupCost,
-      'estimatedMonthlyIncome': estimatedMonthlyIncome,
-      'notes': notes,
-      'createdAt': now.toIso8601String(),
-    });
-    return idea;
-  }
-
-  Future<void> updateIdea(
-    String id, {
-    String? title,
-    String? description,
-    models.HustleType? hustleType,
-    models.IdeaStatus? status,
-    double? estimatedStartupCost,
-    double? estimatedMonthlyIncome,
-    bool clearStartupCost = false,
-    bool clearMonthlyIncome = false,
-    String? notes,
-  }) async {
-    final updates = <String, dynamic>{};
-    if (title != null) updates['title'] = title;
-    if (description != null) updates['description'] = description;
-    if (hustleType != null) updates['hustleType'] = hustleType.name;
-    if (status != null) updates['status'] = status.name;
-    if (clearStartupCost) {
-      updates['estimatedStartupCost'] = null;
-    } else if (estimatedStartupCost != null) {
-      updates['estimatedStartupCost'] = estimatedStartupCost;
-    }
-    if (clearMonthlyIncome) {
-      updates['estimatedMonthlyIncome'] = null;
-    } else if (estimatedMonthlyIncome != null) {
-      updates['estimatedMonthlyIncome'] = estimatedMonthlyIncome;
-    }
-    if (notes != null) updates['notes'] = notes;
-    await _ideasRef.doc(id).update(updates);
-    final i = _ideas.indexWhere((idea) => idea.id == id);
-    if (i != -1) {
-      if (title != null) _ideas[i].title = title;
-      if (description != null) _ideas[i].description = description;
-      if (hustleType != null) _ideas[i].hustleType = hustleType;
-      if (status != null) _ideas[i].status = status;
-      if (clearStartupCost) {
-        _ideas[i].estimatedStartupCost = null;
-      } else if (estimatedStartupCost != null) {
-        _ideas[i].estimatedStartupCost = estimatedStartupCost;
-      }
-      if (clearMonthlyIncome) {
-        _ideas[i].estimatedMonthlyIncome = null;
-      } else if (estimatedMonthlyIncome != null) {
-        _ideas[i].estimatedMonthlyIncome = estimatedMonthlyIncome;
-      }
-      if (notes != null) _ideas[i].notes = notes;
-      notifyListeners();
-    }
-  }
-
-  Future<void> deleteIdea(String id) async {
-    await _ideasRef.doc(id).delete();
-    _ideas.removeWhere((idea) => idea.id == id);
-    notifyListeners();
-  }
-
-  /// Promotes an Idea to a real SideStack and archives the idea.
-  /// Returns the newly-created SideStack.
-  Future<models.SideStack> convertIdeaToStack(String ideaId) async {
-    final idea = _ideas.firstWhere((i) => i.id == ideaId);
-    // Create the stack — monthly goal from estimated income, all-time goal clear
-    final stack = await addSideStack(
-      name: idea.title,
-      description: idea.description,
-      hustleType: idea.hustleType,
-      monthlyGoalAmount: idea.estimatedMonthlyIncome,
-    );
-    // Archive the idea so it doesn't clutter the list
-    await updateIdea(ideaId, status: models.IdeaStatus.archived);
-    return stack;
   }
 
   // ── Invoice CRUD ───────────────────────────────────────────────────────────
@@ -1919,7 +1808,6 @@ class AppProvider extends ChangeNotifier {
   @override
   void dispose() {
     _subscription?.cancel();
-    _ideasSubscription?.cancel();
     _invoicesSubscription?.cancel();
     super.dispose();
   }

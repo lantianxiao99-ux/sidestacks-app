@@ -39,7 +39,7 @@ void main() async {
   if (kDebugMode) {
     try {
       final token = await FirebaseAppCheck.instance.getToken(true);
-      debugPrint('🔑 App Check token obtained (debug mode active)');
+      debugPrint('🔑 App Check debug token: $token');
     } catch (e) {
       debugPrint('⚠️ App Check token error: $e');
     }

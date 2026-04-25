@@ -1,6 +1,7 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { defineString } from "firebase-functions/params";
 import * as admin from "firebase-admin";
+import { auth } from "firebase-functions/v1";
 import axios from "axios";
 
 admin.initializeApp();
@@ -507,5 +508,54 @@ export const disconnectBank = onCall({ enforceAppCheck: true }, async (request) 
   } catch (err: any) {
     console.error("disconnectBank error:", err);
     throw new HttpsError("internal", "Could not disconnect bank.");
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// deleteUserData
+//
+// Triggered automatically when a Firebase Auth user is deleted (either by the
+// user themselves via deleteAccount() or by an admin).
+//
+// Deletes:
+//   1. The username doc in /usernames/{username} (looked up by uid).
+//   2. The entire /users/{uid} subtree including all sub-collections
+//      (stacks, transactions, ideas, invoices, bank_connections, etc.)
+//      via admin.firestore().recursiveDelete(), which handles nested
+//      sub-collections that Firestore does NOT delete automatically.
+//
+// This satisfies GDPR / CCPA "right to erasure" requirements.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const deleteUserData = auth.user().onDelete(async (user) => {
+  const uid = user.uid;
+  console.log(`deleteUserData: cleaning up data for uid=${uid}`);
+
+  try {
+    // 1. Delete the username index doc(s) for this user.
+    //    There should only ever be one, but we query to be safe.
+    const usernameSnap = await db
+      .collection("usernames")
+      .where("uid", "==", uid)
+      .get();
+
+    if (!usernameSnap.empty) {
+      const batch = db.batch();
+      for (const doc of usernameSnap.docs) {
+        batch.delete(doc.ref);
+      }
+      await batch.commit();
+      console.log(`deleteUserData: removed ${usernameSnap.size} username doc(s)`);
+    }
+
+    // 2. Recursively delete the user's entire Firestore subtree.
+    //    admin.firestore().recursiveDelete() deletes the document and all
+    //    documents in every sub-collection, regardless of nesting depth.
+    await admin.firestore().recursiveDelete(db.collection("users").doc(uid));
+    console.log(`deleteUserData: recursively deleted /users/${uid}`);
+  } catch (err) {
+    console.error(`deleteUserData error for uid=${uid}:`, err);
+    // Do not re-throw — a failure here should not prevent the Auth deletion
+    // from completing. Manual cleanup can be done from the Firebase console.
   }
 });

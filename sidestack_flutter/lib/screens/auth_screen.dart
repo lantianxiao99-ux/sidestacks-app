@@ -122,8 +122,9 @@ class _AuthScreenState extends State<AuthScreen>
     setState(() => _isSubmitting = true);
     final auth = context.read<AuthProvider>();
     final success = await auth.signInWithGoogle();
+    if (!mounted) return; // widget may have unmounted if sign-in navigated away
     setState(() => _isSubmitting = false);
-    if (!success && mounted && auth.error != null) {
+    if (!success && auth.error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(auth.error!), backgroundColor: AppTheme.red),
       );
@@ -134,8 +135,9 @@ class _AuthScreenState extends State<AuthScreen>
     setState(() => _isSubmitting = true);
     final auth = context.read<AuthProvider>();
     final success = await auth.signInWithApple();
+    if (!mounted) return;
     setState(() => _isSubmitting = false);
-    if (!success && mounted && auth.error != null) {
+    if (!success && auth.error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(auth.error!), backgroundColor: AppTheme.red),
       );
@@ -157,6 +159,15 @@ class _AuthScreenState extends State<AuthScreen>
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+
+    // ── Account linking UI ─────────────────────────────────────────────────
+    // Shown when Apple/Google sign-in detects an existing account with the
+    // same email. The user enters their password to merge both into one account.
+    if (auth.needsAccountLink) {
+      return _AccountLinkScreen(email: auth.pendingLinkEmail ?? '');
+    }
+
     return Scaffold(
       backgroundColor: AppTheme.of(context).background,
       body: SafeArea(
@@ -743,4 +754,170 @@ class _FieldLabel extends StatelessWidget {
       style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: AppTheme.of(context).textMuted, letterSpacing: 0.8),
     ),
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Account linking screen
+//
+// Shown when Apple/Google sign-in detects an existing email/password account
+// with the same email. The user enters their password once to merge both
+// sign-in methods into a single account — after that, Apple, Google, and
+// email/password all reach the same data.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AccountLinkScreen extends StatefulWidget {
+  final String email;
+  const _AccountLinkScreen({required this.email});
+
+  @override
+  State<_AccountLinkScreen> createState() => _AccountLinkScreenState();
+}
+
+class _AccountLinkScreenState extends State<_AccountLinkScreen> {
+  final _passwordCtrl = TextEditingController();
+  bool _obscure = true;
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _link() async {
+    final password = _passwordCtrl.text;
+    if (password.isEmpty) {
+      setState(() => _error = 'Please enter your password.');
+      return;
+    }
+    setState(() { _loading = true; _error = null; });
+    final auth = context.read<AuthProvider>();
+    final err = await auth.linkAccountWithEmailPassword(password);
+    if (!mounted) return;
+    if (err != null) {
+      setState(() { _loading = false; _error = err; });
+    }
+    // On success, authStateChanges fires → RootScreen navigates to main app.
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.of(context);
+
+    return Scaffold(
+      backgroundColor: colors.background,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 60),
+              Center(
+                child: Column(
+                  children: [
+                    Container(
+                      width: 64, height: 64,
+                      decoration: BoxDecoration(
+                        color: AppTheme.accentDim,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.link, size: 30, color: AppTheme.accent),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'One account found',
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.5),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'An existing SideStacks account is linked to\n${widget.email}\n\nEnter your password to connect your sign-in method and keep all your data in one place.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 13, color: colors.textSecondary, height: 1.5),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 40),
+
+              // Email display (read-only)
+              _FieldLabel('Email'),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                decoration: BoxDecoration(
+                  color: colors.cardAlt,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colors.border),
+                ),
+                child: Text(widget.email,
+                    style: TextStyle(fontSize: 14, color: colors.textPrimary)),
+              ),
+              const SizedBox(height: 16),
+
+              // Password field
+              _FieldLabel('Password'),
+              StatefulBuilder(
+                builder: (ctx, setO) => TextField(
+                  controller: _passwordCtrl,
+                  obscureText: _obscure,
+                  autofocus: true,
+                  style: TextStyle(fontSize: 14, color: colors.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: 'Your SideStacks password',
+                    hintStyle: TextStyle(color: colors.textMuted, fontSize: 13),
+                    errorText: _error,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                        size: 18, color: colors.textMuted,
+                      ),
+                      onPressed: () => setState(() => _obscure = !_obscure),
+                    ),
+                  ),
+                  onSubmitted: (_) => _loading ? null : _link(),
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // Link button
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppTheme.accent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  onPressed: _loading ? null : _link,
+                  child: _loading
+                      ? const SizedBox(width: 18, height: 18,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text('Link accounts & continue',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Cancel — goes back to the normal auth screen
+              Center(
+                child: GestureDetector(
+                  onTap: () => context.read<AuthProvider>().cancelAccountLink(),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text('Cancel',
+                        style: TextStyle(fontSize: 13, color: colors.textMuted, fontWeight: FontWeight.w500)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 40),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

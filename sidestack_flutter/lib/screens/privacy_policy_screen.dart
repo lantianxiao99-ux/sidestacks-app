@@ -36,10 +36,10 @@ class PrivacyPolicyScreen extends StatelessWidget {
             _section(
               theme,
               'About This Policy',
-              'SideStacks ("we", "us", "our") is operated by SideStacks Pty Ltd (ACN pending), '
-              'an Australian company. This Privacy Policy explains how we collect, use, disclose, '
-              'and protect your personal information when you use the SideStacks mobile application '
-              '("the App").\n\n'
+              'SideStacks ("we", "us", "our") is an Australian business registered in Western '
+              'Australia, trading as SideStacks (ABN 19 813 173 221). This Privacy Policy explains '
+              'how we collect, use, disclose, and protect your personal information when you use '
+              'the SideStacks mobile application ("the App").\n\n'
               'We are committed to complying with the Australian Privacy Act 1988 (Cth) and the '
               'Australian Privacy Principles (APPs), the UK General Data Protection Regulation '
               '(UK GDPR), and the EU General Data Protection Regulation (GDPR) where applicable.',
@@ -49,8 +49,10 @@ class PrivacyPolicyScreen extends StatelessWidget {
               '1. Information We Collect',
               'We collect the following categories of information:\n\n'
               'Account Information — When you register, we collect your name, email address, and '
-              'password (stored as a secure hash). If you sign in with Google, we receive your name '
-              'and email address from Google.\n\n'
+              'password (stored as a secure hash). If you sign in with Google or Apple, we receive '
+              'your name and email address from those providers. If you sign in with multiple '
+              'providers using the same email address, your accounts are automatically linked under '
+              'a single profile.\n\n'
               'Financial Data — Income entries, expense entries, transaction notes, categories, '
               'invoice details, and client information that you enter into the App. This data is '
               'stored on your account and is not shared with third parties for marketing purposes.\n\n'
@@ -93,9 +95,10 @@ class PrivacyPolicyScreen extends StatelessWidget {
               theme,
               '4. Third-Party Services',
               'We use the following third-party services that may receive your data:\n\n'
-              'Firebase (Google LLC) — We use Firebase Authentication, Firestore (database), and '
-              'Firebase Storage to store your account and financial data. Data is stored in Google\'s '
-              'cloud infrastructure. Google\'s privacy policy applies: https://policies.google.com/privacy\n\n'
+              'Firebase (Google LLC) — We use Firebase Authentication, Firestore (database), '
+              'Firebase Storage, and Firebase App Check to store your account and financial data '
+              'and to protect the App from unauthorised access. Data is stored in Google\'s cloud '
+              'infrastructure. Google\'s privacy policy applies: https://policies.google.com/privacy\n\n'
               'OpenAI — When you use the AI Summary feature, selected financial data from your stacks '
               'is sent to OpenAI\'s API to generate insights. OpenAI does not use API data to train '
               'its models. OpenAI\'s privacy policy: https://openai.com/policies/privacy-policy\n\n'
@@ -167,7 +170,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
               'If you have any questions, concerns, or requests regarding this Privacy Policy or '
               'your personal data, please contact us at:\n\n'
               'SideStacks Support\n'
-              'Email: privacy@sidestacks.app\n'
+              'Email: support@sidestacks.app\n'
               'Website: https://sidestacks.app',
             ),
           ],
@@ -189,7 +192,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
           const Icon(Icons.info_outline, size: 14, color: AppTheme.accent),
           const SizedBox(width: 8),
           Text(
-            'Last updated: 1 April 2025',
+            'Last updated: 24 April 2026',
             style: TextStyle(
                 fontSize: 12,
                 color: theme.textSecondary,

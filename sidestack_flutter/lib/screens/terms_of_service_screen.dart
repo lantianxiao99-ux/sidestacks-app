@@ -37,11 +37,11 @@ class TermsOfServiceScreen extends StatelessWidget {
               theme,
               'Agreement to Terms',
               'These Terms of Service ("Terms") govern your use of the SideStacks mobile application '
-              '("App") operated by SideStacks Pty Ltd (ACN pending) ("we", "us", "our"). By creating '
+              '("App") operated by SideStacks (ABN 19 813 173 221) ("we", "us", "our"). By creating '
               'an account or using the App, you agree to be bound by these Terms. If you do not agree, '
               'please do not use the App.\n\n'
-              'These Terms are governed by the laws of New South Wales, Australia. Any disputes will '
-              'be subject to the exclusive jurisdiction of the courts of New South Wales.',
+              'These Terms are governed by the laws of Western Australia, Australia. Any disputes will '
+              'be subject to the exclusive jurisdiction of the courts of Western Australia.',
             ),
             _section(
               theme,
@@ -61,9 +61,11 @@ class TermsOfServiceScreen extends StatelessWidget {
             _section(
               theme,
               '2. Eligibility',
-              'You must be at least 18 years of age to create an account and use the App. By using '
-              'the App, you represent and warrant that you meet this age requirement and that you '
-              'have the legal capacity to enter into these Terms.',
+              'You must be at least 16 years of age to create an account and use the App. If you '
+              'are between 16 and 18 years old, you represent that you have obtained the consent '
+              'of a parent or legal guardian to use the App and enter into these Terms. By using '
+              'the App, you represent and warrant that you meet the applicable age requirement and '
+              'have the legal capacity (or parental consent where required) to agree to these Terms.',
             ),
             _section(
               theme,
@@ -185,7 +187,7 @@ class TermsOfServiceScreen extends StatelessWidget {
               '13. Contact Us',
               'If you have any questions about these Terms, please contact us at:\n\n'
               'SideStacks Support\n'
-              'Email: legal@sidestacks.app\n'
+              'Email: support@sidestacks.app\n'
               'Website: https://sidestacks.app',
             ),
           ],
@@ -207,7 +209,7 @@ class TermsOfServiceScreen extends StatelessWidget {
           const Icon(Icons.info_outline, size: 14, color: AppTheme.accent),
           const SizedBox(width: 8),
           Text(
-            'Last updated: 1 April 2025',
+            'Last updated: 24 April 2026',
             style: TextStyle(
                 fontSize: 12,
                 color: theme.textSecondary,
