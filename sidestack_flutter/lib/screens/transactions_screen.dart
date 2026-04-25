@@ -6,7 +6,6 @@ import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import '../widgets/add_transaction_sheet.dart';
-import '../widgets/connect_bank_sheet.dart';
 import 'stack_detail_screen.dart';
 
 // ─── Screen ────────────────────────────────────────────────────────────────────
@@ -198,32 +197,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                         child: Text('Clear filters',
                             style: TextStyle(
                                 fontSize: 12, color: AppTheme.accent)),
-                      ),
-                    ] else ...[
-                      const SizedBox(height: 16),
-                      GestureDetector(
-                        onTap: () => showConnectBankSheet(context),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: AppTheme.accentDim,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.link_outlined,
-                                  size: 16, color: AppTheme.accent),
-                              const SizedBox(width: 8),
-                              Text('Connect bank account',
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppTheme.accent)),
-                            ],
-                          ),
-                        ),
                       ),
                     ],
                   ],

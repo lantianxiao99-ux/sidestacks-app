@@ -11,7 +11,6 @@ import '../services/csv_export_service.dart';
 import '../widgets/paywall_sheet.dart';
 import '../services/notification_service.dart';
 import '../widgets/csv_import_sheet.dart';
-import '../widgets/connect_bank_sheet.dart';
 
 // ─── Theme mode helpers ───────────────────────────────────────────────────────
 const _kThemeModes = [ThemeMode.system, ThemeMode.light, ThemeMode.dark];
@@ -784,102 +783,14 @@ class _PreferencesPage extends StatelessWidget {
                 ]),
               ),
             ),
-            // Connect bank
-            Consumer<AppProvider>(
-              builder: (context, prov, _) {
-                final connected = prov.bankConnected;
-                return GestureDetector(
-                  onTap: () => showConnectBankSheet(context),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 13),
-                    child: Row(children: [
-                      Container(
-                        width: 32, height: 32,
-                        decoration: BoxDecoration(
-                            color: connected
-                                ? AppTheme.greenDim
-                                : AppTheme.accentDim,
-                            borderRadius: BorderRadius.circular(9)),
-                        child: Icon(
-                          connected
-                              ? Icons.account_balance_outlined
-                              : Icons.link_outlined,
-                          size: 16,
-                          color: connected
-                              ? AppTheme.green
-                              : AppTheme.accent,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              connected
-                                  ? prov.bankInstitution ?? 'Bank connected'
-                                  : 'Connect bank account',
-                              style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500),
-                            ),
-                            Text(
-                              connected
-                                  ? 'Tap to manage or sync transactions'
-                                  : 'Auto-import income & expenses',
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  color: colors.textMuted),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (connected)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                              color: AppTheme.greenDim,
-                              borderRadius: BorderRadius.circular(4)),
-                          child: const Text('LIVE',
-                              style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppTheme.green)),
-                        )
-                      else
-                        Icon(Icons.chevron_right,
-                            size: 16, color: colors.textMuted),
-                    ]),
-                  ),
-                );
-              },
-            ),
             // Import CSV
             _NavRow(
               icon: Icons.upload_file_outlined,
               iconBg: AppTheme.greenDim,
               iconColor: AppTheme.green,
-              label: 'Import bank CSV',
-              subtitle: 'Bring in transactions from your bank',
+              label: 'Import CSV',
+              subtitle: 'Bring in transactions from a CSV file',
               onTap: () => showCsvImportSheet(context),
-            ),
-            // Smart rules
-            Consumer<AppProvider>(
-              builder: (context, prov, _) {
-                final ruleCount = prov.bankRules.length;
-                return _NavRow(
-                  icon: Icons.auto_awesome_outlined,
-                  iconBg: AppTheme.accentDim,
-                  iconColor: AppTheme.accent,
-                  label: 'Smart Stack Rules',
-                  subtitle: ruleCount == 0
-                      ? 'No rules yet — auto-learned on import'
-                      : '$ruleCount merchant rule${ruleCount == 1 ? '' : 's'} saved',
-                  onTap: () => _showBankRulesSheet(context, prov),
-                );
-              },
             ),
           ]),
 
@@ -1722,134 +1633,6 @@ void _showArchivedStacks(BuildContext context, AppProvider provider) {
               )),
         ],
       ),
-    ),
-  );
-}
-
-// ─── Bank smart rules sheet ───────────────────────────────────────────────────
-
-void _showBankRulesSheet(BuildContext context, AppProvider provider) {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setModalState) {
-        final rules = provider.bankRules;
-        final stacks = provider.allStacks;
-        return Container(
-          margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-          constraints:
-              BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.75),
-          decoration: BoxDecoration(
-            color: AppTheme.of(context).surface,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppTheme.of(context).borderLight),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 36, height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                      color: AppTheme.of(context).borderLight,
-                      borderRadius: BorderRadius.circular(2)),
-                ),
-              ),
-              Row(children: [
-                const Icon(Icons.auto_awesome_outlined,
-                    size: 18, color: AppTheme.accent),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text('Smart Stack Rules',
-                      style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w700)),
-                ),
-                if (rules.isNotEmpty)
-                  TextButton(
-                    onPressed: () async {
-                      for (final merchant in rules.keys.toList()) {
-                        await provider.deleteBankRule(merchant);
-                      }
-                      setModalState(() {});
-                    },
-                    child: Text('Clear all',
-                        style: TextStyle(fontSize: 12, color: AppTheme.red)),
-                  ),
-              ]),
-              const SizedBox(height: 4),
-              Text(
-                'SideStacks automatically learns which stack to assign when you import bank transactions.',
-                style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.of(context).textSecondary,
-                    height: 1.4),
-              ),
-              const SizedBox(height: 16),
-              if (rules.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  child: Center(
-                    child: Text(
-                      'No rules yet.\nImport transactions from your bank and SideStacks will learn the rules automatically.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          fontSize: 13,
-                          color: AppTheme.of(context).textMuted,
-                          height: 1.5),
-                    ),
-                  ),
-                )
-              else
-                Flexible(
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: rules.length,
-                    separatorBuilder: (_, __) => Divider(
-                        height: 1, color: AppTheme.of(context).border),
-                    itemBuilder: (ctx2, i) {
-                      final merchant = rules.keys.elementAt(i);
-                      final stackId = rules.values.elementAt(i);
-                      final stack =
-                          stacks.cast<dynamic>().firstWhere(
-                              (s) => s.id == stackId,
-                              orElse: () => null);
-                      final stackName = stack?.name ?? 'Unknown';
-                      return ListTile(
-                        contentPadding:
-                            const EdgeInsets.symmetric(horizontal: 4),
-                        title: Text(
-                          merchant.isEmpty
-                              ? '(empty)'
-                              : merchant[0].toUpperCase() +
-                                  merchant.substring(1),
-                          style: const TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.w500),
-                        ),
-                        subtitle: Text('→ $stackName',
-                            style: TextStyle(
-                                fontSize: 11,
-                                color: AppTheme.of(context).textMuted)),
-                        trailing: IconButton(
-                          icon: Icon(Icons.delete_outline,
-                              size: 18, color: AppTheme.red),
-                          onPressed: () async {
-                            await provider.deleteBankRule(merchant);
-                            setModalState(() {});
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                ),
-            ],
-          ),
-        );
-      },
     ),
   );
 }

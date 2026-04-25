@@ -10,7 +10,6 @@ import 'package:uuid/uuid.dart';
 import '../models/models.dart' as models;
 import '../services/notification_service.dart';
 import '../services/purchase_service.dart';
-import '../services/bank_service.dart';
 import '../services/demo_service.dart';
 import 'package:intl/intl.dart';
 
@@ -124,11 +123,6 @@ class AppProvider extends ChangeNotifier {
   int _currentStreak = 0;
   int _longestStreak = 0;
   String? _lastLoggedDateKey; // 'yyyy-MM-dd'
-  // Bank connection state
-  bool _bankConnected = false;
-  String _bankInstitution = '';
-  // Bank smart rules: normalised merchant name → stack ID
-  Map<String, String> _bankRules = {};
   // Demo mode — shows sample data until user creates a real stack
   bool _isDemoMode = false;
   // Region / tax settings
@@ -258,9 +252,6 @@ class AppProvider extends ChangeNotifier {
   bool get weeklyReminderEnabled => _weeklyReminderEnabled;
   double? get pendingMilestone => _pendingMilestone;
   String? get pendingPaywallTrigger => _pendingPaywallTrigger;
-  bool get bankConnected => _bankConnected;
-  String get bankInstitution => _bankInstitution;
-  Map<String, String> get bankRules => Map.unmodifiable(_bankRules);
   bool get isDemoMode => _isDemoMode;
   bool get isAustraliaMode => _isAustraliaMode;
   double get customMileageRate => _customMileageRate;
@@ -302,8 +293,14 @@ class AppProvider extends ChangeNotifier {
     return ((current - previous) / previous) * 100;
   }
 
-  /// All users can add unlimited stacks. The premium gate is on transaction history depth.
-  bool get canAddStack => true;
+  /// Free users are limited to 2 active stacks. Pro unlocks unlimited.
+  static const int freeStackLimit = 2;
+
+  bool get canAddStack {
+    if (_isPremium) return true;
+    final activeCount = _stacks.where((s) => !s.isArchived).length;
+    return activeCount < freeStackLimit;
+  }
 
   /// Free users can see the last 3 months of transactions. Premium unlocks full history.
   bool get canViewFullHistory => _isPremium;
@@ -544,8 +541,6 @@ class AppProvider extends ChangeNotifier {
     _pendingPaywallTrigger = null;
     _error = null;
     _notifChecksRan = false;
-    _bankConnected = false;
-    _bankInstitution = '';
     _isDemoMode = false;
     _monthlyIncomeGoal = null;
     _isAustraliaMode = true;
@@ -626,14 +621,6 @@ class AppProvider extends ChangeNotifier {
     _longestStreak = prefs.getInt('streak_longest_$userId') ?? 0;
     _lastLoggedDateKey = prefs.getString('streak_lastDate_$userId');
 
-    // Load bank smart rules (merchant → stackId)
-    final ruleKeys = prefs.getStringList('bankRuleKeys_$userId') ?? [];
-    final ruleVals = prefs.getStringList('bankRuleVals_$userId') ?? [];
-    _bankRules = {
-      for (int i = 0; i < ruleKeys.length && i < ruleVals.length; i++)
-        ruleKeys[i]: ruleVals[i],
-    };
-
     // Region / mileage settings
     _isAustraliaMode = prefs.getBool('isAustraliaMode_$userId') ?? true;
     _customMileageRate = prefs.getDouble('customMileageRate_$userId') ?? 0.67;
@@ -692,9 +679,6 @@ class AppProvider extends ChangeNotifier {
           _firestoreDisplayName = storedName;
         }
 
-        // Bank connection
-        _bankConnected = userData['bank_connected'] == true;
-        _bankInstitution = userData['bank_institution'] as String? ?? '';
       }
     } catch (e) {
       debugPrint('AppProvider Firestore user doc error: $e');
@@ -786,90 +770,6 @@ class AppProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('refreshPremiumStatus error: $e');
     }
-  }
-
-  // ── Bank connection ───────────────────────────────────────────────────────
-
-  /// Called after TrueLayer redirects back with a code.
-  /// Exchanges the code server-side and updates bank connection state.
-  Future<void> handleBankCallback(String code, String state) async {
-    try {
-      final institutionName = await BankService.instance.exchangeCode(
-        code: code,
-        state: state,
-      );
-      await onBankConnected(institutionName);
-    } catch (e) {
-      debugPrint('handleBankCallback error: $e');
-      rethrow;
-    }
-  }
-
-  /// Remembers that [merchantName] should be assigned to [stackId].
-  /// Called after the user confirms a bank import so next time the stack
-  /// is pre-filled automatically.
-  Future<void> saveBankRule(String merchantName, String stackId) async {
-    if (_userId == null) return;
-    final key = merchantName.toLowerCase().trim();
-    _bankRules[key] = stackId;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('bankRuleKeys_$_userId', _bankRules.keys.toList());
-    await prefs.setStringList('bankRuleVals_$_userId', _bankRules.values.toList());
-  }
-
-  /// Looks up the remembered stack for a merchant name, or returns null.
-  String? stackForMerchant(String merchantName) =>
-      _bankRules[merchantName.toLowerCase().trim()];
-
-  /// Deletes a single smart rule for [merchantName].
-  Future<void> deleteBankRule(String merchantName) async {
-    if (_userId == null) return;
-    final key = merchantName.toLowerCase().trim();
-    _bankRules.remove(key);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('bankRuleKeys_$_userId', _bankRules.keys.toList());
-    await prefs.setStringList('bankRuleVals_$_userId', _bankRules.values.toList());
-    notifyListeners();
-  }
-
-  /// Called once the bank is successfully connected.
-  Future<void> onBankConnected(String institutionName) async {
-    _bankConnected = true;
-    _bankInstitution = institutionName;
-    notifyListeners();
-  }
-
-  /// Removes the bank connection — calls Cloud Function then clears local state.
-  Future<void> disconnectBank() async {
-    if (_userId == null) return;
-    // Fetch the item_id from Firestore to pass to the function
-    try {
-      final snap = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(_userId)
-          .collection('bank_connections')
-          .limit(1)
-          .get();
-      if (snap.docs.isNotEmpty) {
-        final itemId = snap.docs.first.id;
-        // Import lazily to avoid a hard dependency if Cloud Functions not set up
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(_userId)
-            .collection('bank_connections')
-            .doc(itemId)
-            .delete();
-      }
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(_userId)
-          .set({'bank_connected': false, 'bank_institution': null},
-              SetOptions(merge: true));
-    } catch (_) {}
-
-    _bankConnected = false;
-    _bankInstitution = '';
-    notifyListeners();
   }
 
   // ── Demo mode ──────────────────────────────────────────────────────────────
@@ -1237,11 +1137,6 @@ class AppProvider extends ChangeNotifier {
       'monthlyGoalAmount': monthlyGoalAmount,
       'isArchived': false,
     });
-    // Milestone paywall: nudge free users who hit 3 stacks to go Pro
-    final activeCount = _stacks.where((s) => !s.isArchived).length + 1;
-    if (!isPremium && activeCount == 3 && _pendingPaywallTrigger == null) {
-      _pendingPaywallTrigger = 'third_stack';
-    }
     return stack;
   }
 
