@@ -134,7 +134,7 @@ class TermsOfServiceScreen extends StatelessWidget {
               theme,
               '8. Intellectual Property',
               'All intellectual property in the App — including its design, code, branding, and '
-              'content created by us — is owned by SideStacks Pty Ltd or our licensors. You are '
+              'content created by us — is owned by SideStacks or our licensors. You are '
               'granted a limited, non-exclusive, non-transferable licence to use the App for '
               'personal, non-commercial purposes in accordance with these Terms.\n\n'
               'You may not copy, modify, distribute, or create derivative works based on the App '
@@ -155,8 +155,8 @@ class TermsOfServiceScreen extends StatelessWidget {
             _section(
               theme,
               '10. Limitation of Liability',
-              'To the maximum extent permitted by applicable law, SideStacks Pty Ltd and its '
-              'directors, employees, and contractors shall not be liable for any indirect, '
+              'To the maximum extent permitted by applicable law, SideStacks and its '
+              'operators shall not be liable for any indirect, '
               'incidental, special, consequential, or punitive damages, including loss of profits, '
               'data, or business opportunities, arising from your use of or inability to use the App.\n\n'
               'Our total liability to you for any claim arising from your use of the App is limited '

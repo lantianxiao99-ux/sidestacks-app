@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
 import '../models/models.dart';
 import '../providers/app_provider.dart';
@@ -343,13 +345,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       iconBg: const Color(0xFFFFFBEB),
                       iconColor: const Color(0xFFF59E0B),
                       label: 'Rate the App',
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Opening App Store… ⭐'),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
+                      onTap: () async {
+                        const url =
+                            'https://apps.apple.com/app/id6762786109?action=write-review';
+                        final uri = Uri.parse(url);
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri,
+                              mode: LaunchMode.externalApplication);
+                        }
                       },
                     ),
                   ]),
@@ -1000,6 +1003,7 @@ class _AccountPageState extends State<_AccountPage> {
                               setO(() => obscure = !obscure),
                         ),
                       ),
+                      inputFormatters: [LengthLimitingTextInputFormatter(128)],
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -1371,6 +1375,7 @@ void _showChangePasswordSheet(
                     labelStyle:
                         TextStyle(fontSize: 13, color: colors.textMuted),
                   ),
+                  inputFormatters: [LengthLimitingTextInputFormatter(128)],
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -1381,6 +1386,7 @@ void _showChangePasswordSheet(
                     labelStyle:
                         TextStyle(fontSize: 13, color: colors.textMuted),
                   ),
+                  inputFormatters: [LengthLimitingTextInputFormatter(128)],
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -1391,6 +1397,7 @@ void _showChangePasswordSheet(
                     labelStyle:
                         TextStyle(fontSize: 13, color: colors.textMuted),
                   ),
+                  inputFormatters: [LengthLimitingTextInputFormatter(128)],
                 ),
                 if (errorMsg != null) ...[
                   const SizedBox(height: 10),
@@ -2171,6 +2178,7 @@ class _NameEditRowState extends State<_NameEditRow> {
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(vertical: 6),
                       ),
+                      inputFormatters: [LengthLimitingTextInputFormatter(100)],
                       onSubmitted: (_) => _saving ? null : _save(),
                     )
                   : Column(
@@ -2302,6 +2310,7 @@ class _UsernameFieldState extends State<_UsernameField> {
                 ),
                 autocorrect: false,
                 keyboardType: TextInputType.visiblePassword,
+                inputFormatters: [LengthLimitingTextInputFormatter(30)],
                 onChanged: (_) { if (_error != null) setState(() => _error = null); },
                 onSubmitted: (_) => _saving ? null : _save(),
               ),
