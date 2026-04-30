@@ -254,8 +254,9 @@ class _PaywallSheetState extends State<_PaywallSheet> {
             // ── Price row ──────────────────────────────────────────────────
             _loadingPackage
                 ? const SizedBox(height: 32, child: CircularProgressIndicator(color: AppTheme.accent, strokeWidth: 2))
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
                     children: [
                       // Billed amount is the most prominent element (Apple requirement)
                       Text(
@@ -267,12 +268,14 @@ class _PaywallSheetState extends State<_PaywallSheet> {
                           letterSpacing: -0.5,
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _isAnnual
-                            ? 'per year ($annualMonthly / mo) · cancel anytime'
-                            : 'per month · cancel anytime',
-                        style: TextStyle(fontSize: 11, color: AppTheme.of(context).textMuted),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _isAnnual
+                              ? 'per year ($annualMonthly / mo) · cancel anytime'
+                              : 'per month · cancel anytime',
+                          style: TextStyle(fontSize: 11, color: AppTheme.of(context).textMuted),
+                        ),
                       ),
                     ],
                   ),
