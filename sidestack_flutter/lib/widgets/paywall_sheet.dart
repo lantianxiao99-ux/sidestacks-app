@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/app_provider.dart';
 import '../services/purchase_service.dart';
 import '../theme/app_theme.dart';
@@ -254,12 +255,12 @@ class _PaywallSheetState extends State<_PaywallSheet> {
             // ── Price row ──────────────────────────────────────────────────
             _loadingPackage
                 ? const SizedBox(height: 32, child: CircularProgressIndicator(color: AppTheme.accent, strokeWidth: 2))
-                : Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Billed amount is the most prominent element (Apple requirement)
                       Text(
-                        displayPrice,
+                        _isAnnual ? annualPrice : monthlyPrice,
                         style: const TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.w700,
@@ -267,12 +268,12 @@ class _PaywallSheetState extends State<_PaywallSheet> {
                           letterSpacing: -0.5,
                         ),
                       ),
-                      const Text(' / mo', style: TextStyle(fontSize: 13, color: AppTheme.accent)),
-                      const Spacer(),
+                      const SizedBox(height: 2),
                       Text(
-                        billingNote,
-                        style: TextStyle(fontSize: 10, color: AppTheme.of(context).textMuted),
-                        textAlign: TextAlign.right,
+                        _isAnnual
+                            ? 'per year ($annualMonthly / mo) · cancel anytime'
+                            : 'per month · cancel anytime',
+                        style: TextStyle(fontSize: 11, color: AppTheme.of(context).textMuted),
                       ),
                     ],
                   ),
@@ -308,6 +309,24 @@ class _PaywallSheetState extends State<_PaywallSheet> {
                     child: Text('Maybe later',
                         style: TextStyle(fontSize: 12, color: AppTheme.of(context).textMuted, fontWeight: FontWeight.w500)),
                   ),
+                ),
+              ],
+            ),
+
+            // Privacy Policy · Terms of Use (required for subscription purchase flows)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                GestureDetector(
+                  onTap: () => launchUrl(Uri.parse('https://sidestacksapp.com/privacy'), mode: LaunchMode.externalApplication),
+                  child: Text('Privacy Policy',
+                      style: TextStyle(fontSize: 10, color: AppTheme.of(context).textMuted, decoration: TextDecoration.underline)),
+                ),
+                Text('  ·  ', style: TextStyle(fontSize: 10, color: AppTheme.of(context).textMuted)),
+                GestureDetector(
+                  onTap: () => launchUrl(Uri.parse('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/'), mode: LaunchMode.externalApplication),
+                  child: Text('Terms of Use',
+                      style: TextStyle(fontSize: 10, color: AppTheme.of(context).textMuted, decoration: TextDecoration.underline)),
                 ),
               ],
             ),
