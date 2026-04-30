@@ -31,40 +31,6 @@ class _PaywallSheetState extends State<_PaywallSheet> {
   bool _restoring = false;
   bool _isAnnual = true; // Default to annual — better value, lower churn
 
-  static const _features = [
-    _Feature(
-      icon: Icons.history,
-      label: 'Full transaction history',
-      sub: 'Free shows last 3 months. Pro unlocks everything',
-      highlight: true,
-    ),
-    _Feature(
-      icon: Icons.receipt_long_outlined,
-      label: 'PDF invoice generator',
-      sub: 'Professional invoices with your payment link. Share in seconds',
-    ),
-    _Feature(
-      icon: Icons.bar_chart,
-      label: 'Full analytics suite',
-      sub: '14 charts: trends, projections, comparisons, YoY',
-    ),
-    _Feature(
-      icon: Icons.download_outlined,
-      label: 'CSV & PDF export',
-      sub: 'Export anytime in CSV or PDF, accountant-ready',
-    ),
-    _Feature(
-      icon: Icons.calculate_outlined,
-      label: 'Tax estimates',
-      sub: 'Quarterly tax estimates based on your real profit',
-    ),
-    _Feature(
-      icon: Icons.camera_alt_outlined,
-      label: 'Receipt scanner',
-      sub: 'Attach photos to any expense instantly',
-    ),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -159,7 +125,7 @@ class _PaywallSheetState extends State<_PaywallSheet> {
     if (_monthlyPackage == null || _annualPackage == null) return 'Save 35%';
     final monthlyAnnualized = _monthlyPackage!.storeProduct.price * 12;
     final annualPrice = _annualPackage!.storeProduct.price;
-    if (monthlyAnnualized <= 0) return 'Save 35%';
+    if (monthlyAnnualized <= 0) return 'Save 17%';
     final pct = ((1 - annualPrice / monthlyAnnualized) * 100).round();
     return 'Save $pct%';
   }
@@ -171,16 +137,16 @@ class _PaywallSheetState extends State<_PaywallSheet> {
     final busy = _purchasing || _restoring;
 
     final monthlyPrice =
-        _monthlyPackage?.storeProduct.priceString ?? '\$9.99';
+        _monthlyPackage?.storeProduct.priceString ?? '\$6.00';
     final annualPrice =
-        _annualPackage?.storeProduct.priceString ?? '\$79.99';
+        _annualPackage?.storeProduct.priceString ?? '\$60.00';
 
     // Per-month equivalent shown under annual
     final annualMonthly = _annualPackage != null
         ? '\$${(_annualPackage!.storeProduct.price / 12).toStringAsFixed(2)}'
-        : '\$6.67';
+        : '\$5.00';
 
-    final displayPrice = _isAnnual ? '$annualMonthly / mo' : '$monthlyPrice / mo';
+    final displayPrice = _isAnnual ? annualMonthly : monthlyPrice;
     final billingNote = _isAnnual
         ? 'Billed $annualPrice annually · cancel anytime'
         : 'Billed monthly · cancel anytime';
@@ -193,7 +159,7 @@ class _PaywallSheetState extends State<_PaywallSheet> {
         border: Border.all(color: AppTheme.of(context).borderLight),
       ),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -202,7 +168,7 @@ class _PaywallSheetState extends State<_PaywallSheet> {
               child: Container(
                 width: 36,
                 height: 4,
-                margin: const EdgeInsets.only(bottom: 20),
+                margin: const EdgeInsets.only(bottom: 14),
                 decoration: BoxDecoration(
                   color: AppTheme.of(context).borderLight,
                   borderRadius: BorderRadius.circular(2),
@@ -210,53 +176,63 @@ class _PaywallSheetState extends State<_PaywallSheet> {
               ),
             ),
 
-            // Icon
-            ClipRRect(
-              borderRadius: BorderRadius.circular(18),
-              child: Image.asset('assets/icon.png', width: 56, height: 56),
+            // Logo + trial chip row
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Image.asset(
+                  Theme.of(context).brightness == Brightness.dark
+                      ? 'assets/logo_white.png'
+                      : 'assets/logo_navy.png',
+                  width: 100,
+                  fit: BoxFit.contain,
+                ),
+                const Spacer(),
+                Consumer<AppProvider>(
+                  builder: (context, provider, _) {
+                    if (provider.trialExpired) {
+                      return _StatusChip('Trial ended', AppTheme.red);
+                    } else if (provider.isInTrial) {
+                      return _StatusChip('${provider.trialDaysRemaining}d left in trial', AppTheme.accent);
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
-            const Text(
-              'Your side hustles deserve real tools',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.4,
+            // Headline + subtitle
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Unlock Pro',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.4),
               ),
             ),
-            const SizedBox(height: 6),
-            Consumer<AppProvider>(
-              builder: (context, provider, _) {
-                final totalProfit = provider.stacks.fold<double>(0.0, (sum, stack) => sum + stack.netProfit);
-                final currencySymbol = provider.currencySymbol;
-                final subtitle = totalProfit > 0
-                    ? 'You\'ve earned $currencySymbol${totalProfit.toStringAsFixed(2)} so far. Pro helps you keep more of it.'
-                    : 'Track every dollar, invoice clients, and see where your money really goes.';
-                return Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppTheme.of(context).textSecondary,
-                  ),
-                );
-              },
+            const SizedBox(height: 3),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Everything you need to run your side hustles like a business.',
+                style: TextStyle(fontSize: 13, color: AppTheme.of(context).textSecondary, height: 1.4),
+              ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 14),
 
             // ── Plan toggle ────────────────────────────────────────────────
             Container(
-              padding: const EdgeInsets.all(4),
+              padding: const EdgeInsets.all(3),
               decoration: BoxDecoration(
                 color: AppTheme.of(context).card,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppTheme.of(context).border),
               ),
               child: Row(
                 children: [
                   _PlanToggle(
                     label: 'Annual',
-                    badge: _savingsLabel(),
+                    badge: null,
                     selected: _isAnnual,
                     onTap: () => setState(() => _isAnnual = true),
                   ),
@@ -269,135 +245,71 @@ class _PaywallSheetState extends State<_PaywallSheet> {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
 
-            // ── Comparison table ───────────────────────────────────────────
-            _ComparisonTable(),
-            const SizedBox(height: 20),
+            // ── Feature list ───────────────────────────────────────────────
+            const _ProFeatureList(),
+            const SizedBox(height: 14),
 
-            // ── Testimonials ────────────────────────────────────────────────
-            Column(
-              children: const [
-                _Testimonial(
-                  quote: 'Finally know which of my three hustles is actually worth my time.',
-                  name: 'Jamie, 23',
-                  role: 'Reseller + freelancer',
-                  emoji: '😎',
-                ),
-                SizedBox(height: 8),
-                _Testimonial(
-                  quote: 'Sent my first proper invoice in under 2 minutes. Client paid same day.',
-                  name: 'Priya, 26',
-                  role: 'Freelance designer',
-                  emoji: '✨',
-                ),
-                SizedBox(height: 8),
-                _Testimonial(
-                  quote: 'The tax estimate card alone saved me a nasty surprise at year end.',
-                  name: 'Marcus, 29',
-                  role: 'Content creator',
-                  emoji: '🙌',
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // ── Price ──────────────────────────────────────────────────────
+            // ── Price row ──────────────────────────────────────────────────
             _loadingPackage
-                ? const SizedBox(
-                    height: 36,
-                    child: CircularProgressIndicator(
-                        color: AppTheme.accent, strokeWidth: 2),
-                  )
-                : Column(
+                ? const SizedBox(height: 32, child: CircularProgressIndicator(color: AppTheme.accent, strokeWidth: 2))
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
                     children: [
-                      RichText(
-                        text: TextSpan(
-                          children: [
-                            TextSpan(
-                              text: displayPrice.split(' / ')[0],
-                              style: const TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.accent,
-                                letterSpacing: -0.5,
-                                fontFamily: 'Sora',
-                              ),
-                            ),
-                            TextSpan(
-                              text: ' / mo',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w400,
-                                color: AppTheme.of(context).textSecondary,
-                                fontFamily: 'Sora',
-                              ),
-                            ),
-                          ],
+                      Text(
+                        displayPrice,
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.accent,
+                          letterSpacing: -0.5,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const Text(' / mo', style: TextStyle(fontSize: 13, color: AppTheme.accent)),
+                      const Spacer(),
                       Text(
                         billingNote,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppTheme.of(context).textMuted,
-                        ),
+                        style: TextStyle(fontSize: 10, color: AppTheme.of(context).textMuted),
+                        textAlign: TextAlign.right,
                       ),
                     ],
                   ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
 
             // ── CTA ────────────────────────────────────────────────────────
             PrimaryButton(
-              label: busy
-                  ? (_purchasing ? 'Processing…' : 'Restoring…')
-                  : 'Get Pro Access',
-              onPressed:
-                  (busy || _loadingPackage || _selectedPackage == null)
-                      ? null
-                      : () => _purchase(context),
+              label: busy ? (_purchasing ? 'Processing…' : 'Restoring…') : 'Get Pro Access',
+              onPressed: (busy || _loadingPackage || _selectedPackage == null)
+                  ? null
+                  : () => _purchase(context),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
 
-            // Restore
-            GestureDetector(
-              onTap: busy ? null : () => _restore(context),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: _restoring
-                    ? const SizedBox(
-                        height: 16,
-                        width: 16,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: AppTheme.accent),
-                      )
-                    : Text(
-                        'Restore Purchase',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppTheme.accent,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-              ),
-            ),
-            const SizedBox(height: 2),
-
-            // Dismiss
-            GestureDetector(
-              onTap: busy ? null : () => Navigator.pop(context),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text(
-                  'Maybe later',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppTheme.of(context).textMuted,
-                    fontWeight: FontWeight.w500,
+            // Restore · Maybe later
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                GestureDetector(
+                  onTap: busy ? null : () => _restore(context),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: _restoring
+                        ? const SizedBox(height: 14, width: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.accent))
+                        : Text('Restore', style: TextStyle(fontSize: 12, color: AppTheme.accent, fontWeight: FontWeight.w500)),
                   ),
                 ),
-              ),
+                Text('·', style: TextStyle(color: AppTheme.of(context).textMuted)),
+                GestureDetector(
+                  onTap: busy ? null : () => Navigator.pop(context),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: Text('Maybe later',
+                        style: TextStyle(fontSize: 12, color: AppTheme.of(context).textMuted, fontWeight: FontWeight.w500)),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -475,77 +387,37 @@ class _PlanToggle extends StatelessWidget {
   }
 }
 
-// ─── Feature row ──────────────────────────────────────────────────────────────
+// ─── Status chip ──────────────────────────────────────────────────────────────
 
-class _Feature {
-  final IconData icon;
+class _StatusChip extends StatelessWidget {
   final String label;
-  final String sub;
-  final bool highlight;
-  const _Feature(
-      {required this.icon, required this.label, required this.sub,
-       this.highlight = false});
-}
-
-class _FeatureRow extends StatelessWidget {
-  final _Feature feature;
-  const _FeatureRow({required this.feature});
+  final Color color;
+  const _StatusChip(this.label, this.color);
 
   @override
   Widget build(BuildContext context) {
-    final color = feature.highlight ? AppTheme.green : AppTheme.accent;
-    final bgColor = feature.highlight ? AppTheme.greenDim : AppTheme.accentDim;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 7),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: Icon(feature.icon, size: 16, color: color),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(feature.label,
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: feature.highlight ? color : AppTheme.of(context).textPrimary)),
-                Text(feature.sub,
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: AppTheme.of(context).textSecondary)),
-              ],
-            ),
-          ),
-          const Icon(Icons.check_circle, size: 18, color: AppTheme.green),
-        ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
       ),
+      child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
     );
   }
 }
 
-// ─── Comparison table ─────────────────────────────────────────────────────────
+// ─── Pro feature list ─────────────────────────────────────────────────────────
 
-class _ComparisonTable extends StatelessWidget {
-  const _ComparisonTable();
+class _ProFeatureList extends StatelessWidget {
+  const _ProFeatureList();
 
-  static const _rows = [
-    _CompRow('Transaction history', 'Last 3 months', 'Unlimited'),
-    _CompRow('SideStacks', 'Up to 2', 'Unlimited'),
-    _CompRow('PDF invoice generator', null, 'Professional + payment link'),
-    _CompRow('Full analytics suite', null, '14 charts + projections'),
-    _CompRow('CSV & PDF export', null, 'Accountant-ready, anytime'),
-    _CompRow('Tax estimates', null, 'Quarterly, auto-calculated'),
-    _CompRow('Receipt scanner', null, 'Attach photos to expenses'),
-    _CompRow('Cash flow view', null, 'Recurring + invoice forecast'),
+  static const _items = [
+    _FItem(Icons.layers_outlined,        'Unlimited Stacks',             'Free: up to 2'),
+    _FItem(Icons.history,                'Full transaction history',      'Free: last 3 months'),
+    _FItem(Icons.receipt_long_outlined,  'PDF invoices & payment links',  null),
+    _FItem(Icons.bar_chart,              'Analytics & projections',       null),
+    _FItem(Icons.download_outlined,      'CSV & PDF export',              null),
   ];
 
   @override
@@ -553,256 +425,42 @@ class _ComparisonTable extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.of(context).card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.of(context).border),
-      ),
-      child: Column(
-        children: [
-          // Header row
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppTheme.of(context).cardAlt,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(15)),
-            ),
-            child: Row(children: [
-              const Expanded(child: SizedBox()),
-              SizedBox(
-                width: 70,
-                child: Text(
-                  'FREE',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.of(context).textMuted,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-              ),
-              SizedBox(
-                width: 70,
-                child: Text(
-                  'PRO',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.accent,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-              ),
-            ]),
-          ),
-          // Feature rows
-          ..._rows.asMap().entries.map((entry) {
-            final i = entry.key;
-            final row = entry.value;
-            final isLast = i == _rows.length - 1;
-            return Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                border: isLast
-                    ? null
-                    : Border(
-                        bottom: BorderSide(
-                            color: AppTheme.of(context).border, width: 0.5)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      row.feature,
-                      style: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 70,
-                    child: Center(
-                      child: row.freeLabel != null
-                          ? Text(
-                              row.freeLabel!,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  fontSize: 10,
-                                  color: AppTheme.of(context).textSecondary),
-                            )
-                          : const Icon(Icons.close,
-                              size: 14, color: AppTheme.red),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 70,
-                    child: Center(
-                      child: row.proLabel != null
-                          ? Text(
-                              row.proLabel!,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppTheme.green),
-                            )
-                          : const Icon(Icons.check,
-                              size: 14, color: AppTheme.green),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-}
-
-class _CompRow {
-  final String feature;
-  final String? freeLabel;
-  final String? proLabel;
-  const _CompRow(this.feature, this.freeLabel, this.proLabel);
-}
-
-// ─── Testimonial card ─────────────────────────────────────────────────────────
-
-class _Testimonial extends StatelessWidget {
-  final String quote;
-  final String name;
-  final String role;
-  final String emoji;
-  const _Testimonial({
-    required this.quote,
-    required this.name,
-    required this.role,
-    required this.emoji,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppTheme.of(context).card,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppTheme.of(context).border),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppTheme.accentDim,
-              shape: BoxShape.circle,
+      child: Column(
+        children: _items.asMap().entries.map((e) {
+          final i = e.key;
+          final item = e.value;
+          final isLast = i == _items.length - 1;
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: isLast ? null : BoxDecoration(
+              border: Border(bottom: BorderSide(color: AppTheme.of(context).border, width: 0.5)),
             ),
-            child: Center(
-                child: Text(emoji, style: const TextStyle(fontSize: 18))),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                // Stars
-                Row(
-                  children: List.generate(
-                    5,
-                    (_) => const Icon(Icons.star,
-                        size: 11, color: AppTheme.amber),
-                  ),
+                Icon(item.icon, size: 16, color: AppTheme.accent),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(item.label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '"$quote"',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.of(context).textPrimary,
-                    fontStyle: FontStyle.italic,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '$name · $role',
-                  style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.of(context).textMuted),
-                ),
+                if (item.freeNote != null)
+                  Text(item.freeNote!, style: TextStyle(fontSize: 10, color: AppTheme.of(context).textMuted)),
+                const SizedBox(width: 8),
+                const Icon(Icons.check_circle_rounded, size: 16, color: AppTheme.green),
               ],
             ),
-          ),
-        ],
+          );
+        }).toList(),
       ),
     );
   }
 }
 
-// ─── Value pillar card ────────────────────────────────────────────────────────
-
-class _ValuePillar extends StatelessWidget {
+class _FItem {
   final IconData icon;
-  final Color color;
-  final String title;
-  final String description;
-
-  const _ValuePillar({
-    required this.icon,
-    required this.color,
-    required this.title,
-    required this.description,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppTheme.of(context).card,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.of(context).border),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 20, color: color),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(
-                  description,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.of(context).textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  final String label;
+  final String? freeNote;
+  const _FItem(this.icon, this.label, this.freeNote);
 }

@@ -15,9 +15,24 @@ import 'screens/onboarding_screen.dart';
 import 'screens/username_setup_screen.dart';
 import 'services/notification_service.dart';
 import 'services/purchase_service.dart';
+import 'widgets/error_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Catch Flutter framework errors and show the in-app error screen
+  // instead of the default red crash screen.
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    debugPrint('Flutter error: ${details.exception}');
+  };
+
+  // Override the default red error widget with our branded error screen.
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return ErrorScreen(
+      message: kDebugMode ? details.exception.toString() : null,
+    );
+  };
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
