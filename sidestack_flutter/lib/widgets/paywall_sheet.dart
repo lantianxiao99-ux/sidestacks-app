@@ -2,7 +2,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../providers/app_provider.dart';
 import '../services/purchase_service.dart';
 import '../theme/app_theme.dart';
@@ -309,24 +308,6 @@ class _PaywallSheetState extends State<_PaywallSheet> {
                     child: Text('Maybe later',
                         style: TextStyle(fontSize: 12, color: AppTheme.of(context).textMuted, fontWeight: FontWeight.w500)),
                   ),
-                ),
-              ],
-            ),
-
-            // Privacy Policy · Terms of Use (required for subscription purchase flows)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                GestureDetector(
-                  onTap: () => launchUrl(Uri.parse('https://sidestacksapp.com/privacy'), mode: LaunchMode.externalApplication),
-                  child: Text('Privacy Policy',
-                      style: TextStyle(fontSize: 10, color: AppTheme.of(context).textMuted, decoration: TextDecoration.underline)),
-                ),
-                Text('  ·  ', style: TextStyle(fontSize: 10, color: AppTheme.of(context).textMuted)),
-                GestureDetector(
-                  onTap: () => launchUrl(Uri.parse('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/'), mode: LaunchMode.externalApplication),
-                  child: Text('Terms of Use',
-                      style: TextStyle(fontSize: 10, color: AppTheme.of(context).textMuted, decoration: TextDecoration.underline)),
                 ),
               ],
             ),

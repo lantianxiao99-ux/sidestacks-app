@@ -315,14 +315,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       iconBg: colors.cardAlt,
                       iconColor: colors.textSecondary,
                       label: 'Privacy Policy',
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                                'Visit sidestacks.app/privacy'),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
+                      onTap: () async {
+                        final uri = Uri.parse('https://sidestacksapp.com/privacy.html');
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        }
                       },
                     ),
                     _NavRow(
@@ -330,14 +327,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       iconBg: colors.cardAlt,
                       iconColor: colors.textSecondary,
                       label: 'Terms of Use',
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content:
-                                Text('Visit sidestacks.app/terms'),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
+                      onTap: () async {
+                        final uri = Uri.parse('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/');
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        }
                       },
                     ),
                     _NavRow(
