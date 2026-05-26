@@ -104,14 +104,14 @@ class CashFlowScreen extends StatelessWidget {
                 _SummaryPill(
                     label: 'Expected out',
                     value: formatCurrency(totalOut, sym),
-                    color: AppTheme.red,
-                    bg: AppTheme.redDim),
+                    color: AppTheme.expense,
+                    bg: AppTheme.expense.withOpacity(0.08)),
                 const SizedBox(width: 8),
                 _SummaryPill(
                     label: 'Net',
                     value: formatCurrency(net, sym),
-                    color: net >= 0 ? AppTheme.green : AppTheme.red,
-                    bg: net >= 0 ? AppTheme.greenDim : AppTheme.redDim),
+                    color: net >= 0 ? AppTheme.green : AppTheme.expense,
+                    bg: net >= 0 ? AppTheme.greenDim : AppTheme.expense.withOpacity(0.08)),
               ]),
             ),
           ),
@@ -370,8 +370,8 @@ class _CashFlowSheet extends StatelessWidget {
                     _SummaryPill(
                       label: 'Expected out',
                       value: formatCurrency(totalOut, sym),
-                      color: AppTheme.red,
-                      bg: AppTheme.redDim,
+                      color: AppTheme.expense,
+                      bg: AppTheme.expense.withOpacity(0.08),
                     ),
                     const SizedBox(width: 8),
                     _SummaryPill(
@@ -379,10 +379,10 @@ class _CashFlowSheet extends StatelessWidget {
                       value: formatCurrency(totalIn - totalOut, sym),
                       color: (totalIn - totalOut) >= 0
                           ? AppTheme.green
-                          : AppTheme.red,
+                          : AppTheme.expense,
                       bg: (totalIn - totalOut) >= 0
                           ? AppTheme.greenDim
-                          : AppTheme.redDim,
+                          : AppTheme.expense.withOpacity(0.08),
                     ),
                   ]),
                 ],
@@ -505,25 +505,23 @@ class _SummaryPill extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
         decoration: BoxDecoration(
           color: bg,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: color.withOpacity(0.3)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              label.toUpperCase(),
+              label,
               style: TextStyle(
-                  fontSize: 8,
+                  fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: AppTheme.of(context).textMuted,
-                  letterSpacing: 0.6),
+                  color: AppTheme.of(context).textMuted),
             ),
             const SizedBox(height: 3),
             Text(
               value,
               style: TextStyle(
-                fontFamily: 'Courier',
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: color,
@@ -547,12 +545,11 @@ class _WeekLabel extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(2, 0, 0, 0),
       child: Text(
-        label.toUpperCase(),
+        label,
         style: TextStyle(
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: FontWeight.w700,
           color: isOverdue ? AppTheme.red : AppTheme.of(context).textMuted,
-          letterSpacing: 0.8,
         ),
       ),
     );
@@ -601,10 +598,10 @@ class _EntryTile extends StatelessWidget {
     } else {
       tileColor = AppTheme.of(context).card;
       borderColor = AppTheme.of(context).border;
-      amountColor = AppTheme.red;
+      amountColor = AppTheme.expense;
       icon = Icons.trending_down;
-      iconBg = AppTheme.redDim;
-      iconColor = AppTheme.red;
+      iconBg = AppTheme.expense.withOpacity(0.08);
+      iconColor = AppTheme.expense;
     }
 
     return Container(
@@ -644,7 +641,6 @@ class _EntryTile extends StatelessWidget {
                     Text(
                       '${isIncome ? '+' : '-'}${formatCurrency(entry.amount, symbol)}',
                       style: TextStyle(
-                        fontFamily: 'Courier',
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         color: amountColor,

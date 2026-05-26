@@ -23,7 +23,7 @@ class LockScreen extends StatelessWidget {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: AppTheme.accentDim,
+                    color: AppTheme.of(context).cardAlt,
                     shape: BoxShape.circle,
                   ),
                   child: const Center(
@@ -35,7 +35,7 @@ class LockScreen extends StatelessWidget {
                 Text(
                   'SideStacks is locked',
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.of(context).textPrimary,
                   ),
@@ -67,7 +67,7 @@ class LockScreen extends StatelessWidget {
                       icon: const Icon(Icons.fingerprint, size: 20),
                       label: const Text('Unlock',
                           style: TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.w600)),
+                              fontSize: 13, fontWeight: FontWeight.w600)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.accent,
                         foregroundColor: Colors.white,

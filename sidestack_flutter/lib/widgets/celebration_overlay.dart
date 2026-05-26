@@ -91,7 +91,7 @@ class _CelebrationDialogState extends State<_CelebrationDialog>
     _cardScale = CurvedAnimation(parent: _cardCtrl, curve: Curves.elasticOut);
     _cardFade = CurvedAnimation(parent: _cardCtrl, curve: Curves.easeOut);
 
-    _particles = List.generate(60, (_) => _Particle(_random));
+    _particles = List.generate(20, (_) => _Particle(_random));
 
     // Auto-dismiss after 4 s
     Future.delayed(const Duration(seconds: 4), () {
@@ -161,22 +161,19 @@ class _CelebrationDialogState extends State<_CelebrationDialog>
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.celebration_outlined, size: 52, color: AppTheme.accent),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 8),
                           const Text(
                             'Milestone unlocked',
                             style: TextStyle(
                               fontSize: 13,
                               color: Color(0xFF8B8FA8),
                               fontWeight: FontWeight.w500,
-                              letterSpacing: 0.4,
                             ),
                           ),
                           const SizedBox(height: 6),
                           Text(
                             _milestoneLabel,
                             style: const TextStyle(
-                              fontFamily: 'Courier',
                               fontSize: 44,
                               fontWeight: FontWeight.w700,
                               color: AppTheme.accent,
@@ -200,7 +197,7 @@ class _CelebrationDialogState extends State<_CelebrationDialog>
                           ),
                           const SizedBox(height: 12),
                           const Text(
-                            'Keep stacking',
+                            'Keep going.',
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
@@ -238,7 +235,6 @@ class _CelebrationDialogState extends State<_CelebrationDialog>
                                   fontSize: 11,
                                   color: AppTheme.accent,
                                   fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.3,
                                 ),
                               ),
                             ],
@@ -264,7 +260,7 @@ class _CelebrationDialogState extends State<_CelebrationDialog>
                                   child: const Text(
                                     'Dismiss',
                                     style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 11,
                                       color: AppTheme.accent,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -293,7 +289,7 @@ class _CelebrationDialogState extends State<_CelebrationDialog>
                                       Text(
                                         'Share',
                                         style: TextStyle(
-                                          fontSize: 12,
+                                          fontSize: 11,
                                           color: Colors.white,
                                           fontWeight: FontWeight.w600,
                                         ),
@@ -342,12 +338,10 @@ class _Particle {
 }
 
 const _kConfettiColors = [
-  Color(0xFF6C6FFF), // accent
-  Color(0xFF3DD68C), // green
-  Color(0xFFF1496B), // red
   Color(0xFFFFB547), // amber
-  Color(0xFF4FC3F7), // sky
-  Color(0xFFE040FB), // purple
+  Color(0xFFFFC870), // amber light
+  Color(0xFFFFD700), // gold
+  Color(0xFFFFF0B0), // pale gold
   Colors.white,
 ];
 

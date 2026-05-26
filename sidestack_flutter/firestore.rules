@@ -10,10 +10,16 @@ service cloud.firestore {
   // Only the Admin SDK (Cloud Functions) may set these fields.
   function notTouchingPremiumFields() {
     let protected = ['premium', 'lifetimePremium'];
-    return !request.resource.data.diff(resource.data).affectedKeys().hasAny(protected);
+    let changedKeys = request.resource.data.diff(resource.data).affectedKeys();
+    // trialStartedAt may be written only if it isn't already set (first-time stamp).
+    // Once set, it cannot be overwritten by the client — preventing trial resets.
+    let tryingToResetTrial = changedKeys.hasAny(['trialStartedAt'])
+        && ('trialStartedAt' in resource.data);
+    return !changedKeys.hasAny(protected) && !tryingToResetTrial;
   }
 
-  // Same check for document creation — neither field may appear at all.
+  // Same check for document creation — premium fields may not appear at all.
+  // trialStartedAt IS allowed on create (set by client on first sign-in).
   function notSettingPremiumFields() {
     return !('premium' in request.resource.data)
         && !('lifetimePremium' in request.resource.data);
@@ -62,9 +68,10 @@ service cloud.firestore {
     // Stores {uid, email, username} keyed by lowercased username.
     // Used for username-based sign-in and uniqueness enforcement.
     match /usernames/{username} {
-      // Any signed-in user can read (needed for sign-in username → email lookup
-      // and for the availability check in the UI).
-      allow read: if request.auth != null;
+      // Public read — needed for username availability checks during sign-up
+      // (user is unauthenticated at that point) and for username → email lookup
+      // on sign-in. Usernames are non-sensitive public identifiers.
+      allow read: if true;
       // A user may only create a username doc whose uid matches their own uid.
       // Updates and deletes are not permitted from the client — username docs
       // are cleaned up server-side by the deleteUserData Cloud Function.

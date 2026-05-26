@@ -7,7 +7,9 @@ import '../models/models.dart';
 import '../providers/app_provider.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
+import 'shared_widgets.dart';
 import '../services/csv_export_service.dart';
+import '../screens/analytics_screen.dart' show showInsightsLayoutEditor;
 import 'package:url_launcher/url_launcher.dart';
 
 const _kPrivacyUrl = 'https://lantianxiao99-ux.github.io/sidestacks-legal/privacy.html';
@@ -134,7 +136,7 @@ class _SettingsPanelBody extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        auth.userName ?? 'Hustler',
+                        auth.userName ?? 'User',
                         style: TextStyle(
                             fontSize: 16, fontWeight: FontWeight.w600),
                       ),
@@ -192,7 +194,7 @@ class _SettingsPanelBody extends StatelessWidget {
                         borderRadius: BorderRadius.circular(20)),
                     child: const Text('PRO',
                         style: TextStyle(
-                            fontSize: 9,
+                            fontSize: 11,
                             fontWeight: FontWeight.w700,
                             color: Colors.white)),
                   ),
@@ -290,7 +292,7 @@ class _SettingsPanelBody extends StatelessWidget {
                                 const SizedBox(width: 3),
                                 Text(_kThemeLabels[i],
                                     style: TextStyle(
-                                        fontSize: 9,
+                                        fontSize: 11,
                                         fontWeight: FontWeight.w600,
                                         color: selected
                                             ? Colors.white
@@ -304,6 +306,24 @@ class _SettingsPanelBody extends StatelessWidget {
                     ),
                   ),
                 ]),
+              ),
+            ]),
+            const SizedBox(height: 10),
+
+            // ── Dashboard layout ───────────────────────────────────────
+            _Section(children: [
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(context);
+                  showInsightsLayoutEditor(context);
+                },
+                child: _RowWidget(
+                  icon: Icons.tune_outlined,
+                  iconBg: AppTheme.accentDim,
+                  iconColor: AppTheme.accent,
+                  label: 'Customise dashboard',
+                  showChevron: true,
+                ),
               ),
             ]),
             const SizedBox(height: 10),
@@ -356,17 +376,7 @@ class _SettingsPanelBody extends StatelessWidget {
                 onTap: () async {
                   if (!provider.isPremium) {
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text('CSV export is a Pro perk — unlock it to get your data out anytime.',
-                          style: TextStyle(
-                              fontFamily: 'Sora', fontSize: 13)),
-                      backgroundColor: AppTheme.of(context).card,
-                      behavior: SnackBarBehavior.floating,
-                      action: SnackBarAction(
-                          label: 'Upgrade',
-                          textColor: AppTheme.accent,
-                          onPressed: () {}),
-                    ));
+                    AppToast.error(context, 'CSV export is a Pro feature.');
                     return;
                   }
                   final csv = provider.buildCsv();
@@ -375,13 +385,7 @@ class _SettingsPanelBody extends StatelessWidget {
                       'sidestacks_${date.year}${date.month.toString().padLeft(2, '0')}${date.day.toString().padLeft(2, '0')}.csv';
                   await downloadCsv(csv, filename);
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text('Exported $filename',
-                          style: TextStyle(
-                              fontFamily: 'Sora', fontSize: 13)),
-                      backgroundColor: AppTheme.of(context).card,
-                      behavior: SnackBarBehavior.floating,
-                    ));
+                    AppToast.show(context, 'Exported \$filename');
                   }
                 },
                 child: _RowWidget(
@@ -492,7 +496,7 @@ class _SettingsPanelBody extends StatelessWidget {
             Center(
               child: Text('SideStacks v1.0',
                   style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
                       color: AppTheme.of(context).textMuted)),
             ),
           ],
@@ -605,7 +609,7 @@ class _RowWidget extends StatelessWidget {
         if (trailing.isNotEmpty)
           Text(trailing,
               style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   color: AppTheme.of(context).textSecondary)),
         if (showChevron) ...[
           const SizedBox(width: 4),
@@ -706,11 +710,7 @@ class _AvatarPickerState extends State<_AvatarPicker> {
       widget.onUploaded(url);
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Photo upload didn\'t work — check your connection and try again.'),
-          backgroundColor: AppTheme.red,
-          behavior: SnackBarBehavior.floating,
-        ));
+        AppToast.error(context, 'Photo upload failed. Check your connection and try again.');
       }
     } finally {
       if (mounted) setState(() => _uploading = false);
@@ -814,7 +814,7 @@ void _showArchivedStacks(BuildContext context, AppProvider provider) {
           const SizedBox(height: 4),
           Text('Hidden from the dashboard — data intact.',
               style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   color: AppTheme.of(context).textSecondary)),
           const SizedBox(height: 16),
           ...provider.archivedStacks.map((stack) => Container(
@@ -911,7 +911,7 @@ void _showCurrencyPicker(BuildContext context, AppProvider provider) {
           const SizedBox(height: 4),
           Text('Choose the symbol shown on your transactions',
               style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   color: AppTheme.of(context).textSecondary)),
           const SizedBox(height: 16),
           ...currencies.map((c) {
@@ -929,7 +929,7 @@ void _showCurrencyPicker(BuildContext context, AppProvider provider) {
                   color: selected
                       ? AppTheme.accentDim
                       : AppTheme.of(context).card,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                       color: selected
                           ? AppTheme.accent

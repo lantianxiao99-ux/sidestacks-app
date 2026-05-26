@@ -32,7 +32,7 @@ class _MainShellState extends State<MainShell> {
     final picUrl = context.watch<AppProvider>().profilePictureUrl;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
+      value: SystemUiOverlayStyle.dark,
       child: Scaffold(
         body: IndexedStack(
           index: _currentIndex,
@@ -57,27 +57,27 @@ class _MainShellState extends State<MainShell> {
               const BottomNavigationBarItem(
                 icon: Icon(Icons.home_outlined),
                 activeIcon: Icon(Icons.home),
-                label: 'HOME',
+                label: 'Home',
               ),
               const BottomNavigationBarItem(
-                icon: Icon(Icons.layers_outlined),
-                activeIcon: Icon(Icons.layers),
-                label: 'STACKS',
+                icon: Icon(Icons.receipt_long_outlined),
+                activeIcon: Icon(Icons.receipt_long),
+                label: 'Transactions',
               ),
               const BottomNavigationBarItem(
-                icon: Icon(Icons.calculate_outlined),
-                activeIcon: Icon(Icons.calculate),
-                label: 'ESTIMATES',
+                icon: Icon(Icons.description_outlined),
+                activeIcon: Icon(Icons.description),
+                label: 'Invoices',
               ),
               const BottomNavigationBarItem(
-                icon: Icon(Icons.rocket_launch_outlined),
-                activeIcon: Icon(Icons.rocket_launch),
-                label: 'INSIGHTS',
+                icon: Icon(Icons.bar_chart_outlined),
+                activeIcon: Icon(Icons.bar_chart),
+                label: 'Analytics',
               ),
               BottomNavigationBarItem(
                 icon: _AvatarNavIcon(picUrl: picUrl, active: false),
                 activeIcon: _AvatarNavIcon(picUrl: picUrl, active: true),
-                label: 'PROFILE',
+                label: 'Profile',
               ),
             ],
           ),
@@ -118,9 +118,9 @@ class _AvatarNavIcon extends StatelessWidget {
     );
   }
 
-  Widget _fallback() => Container(
-        color: AppTheme.accentDim,
-        child: const Center(
+  Widget _fallback() => const ColoredBox(
+        color: Color(0xFFF2F4F6),
+        child: Center(
           child: Icon(Icons.person_outline, size: 15, color: AppTheme.accent),
         ),
       );

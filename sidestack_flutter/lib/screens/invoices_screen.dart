@@ -54,7 +54,7 @@ class _InvoicesScreenState extends State<InvoicesScreen>
                 return Text(
                   titles[_tabController.index],
                   style: const TextStyle(
-                      fontSize: 22,
+                      fontSize: 24,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.5),
                 );
@@ -67,10 +67,10 @@ class _InvoicesScreenState extends State<InvoicesScreen>
               labelColor: AppTheme.accent,
               unselectedLabelColor: AppTheme.of(context).textSecondary,
               labelStyle: const TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+                  fontSize: 13, fontWeight: FontWeight.w700),
               tabs: const [
-                Tab(text: 'CLIENTS'),
-                Tab(text: 'INVOICES'),
+                Tab(text: 'Clients'),
+                Tab(text: 'Invoices'),
               ],
             ),
           ),
@@ -104,11 +104,7 @@ class _ReportsTabState extends State<ReportsTab> {
       await action();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Failed to generate PDF: $e'),
-          backgroundColor: AppTheme.red,
-          behavior: SnackBarBehavior.floating,
-        ));
+        AppToast.error(context, 'Failed to generate PDF: \$e');
       }
     } finally {
       if (mounted) setState(() => _generatingId = null);
@@ -138,16 +134,9 @@ class _ReportsTabState extends State<ReportsTab> {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppTheme.accentDim,
-                    AppTheme.greenDim,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: AppTheme.of(context).card,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.accent.withOpacity(0.2)),
+                border: Border.all(color: AppTheme.of(context).border),
               ),
               child: Row(children: [
                 Expanded(
@@ -157,7 +146,7 @@ class _ReportsTabState extends State<ReportsTab> {
                 Container(width: 1, height: 32, color: AppTheme.of(context).border),
                 Expanded(
                   child: _MiniStat(
-                      label: 'Total Expenses', value: '$symbol${totalExpenses.toStringAsFixed(0)}', color: AppTheme.red),
+                      label: 'Total Expenses', value: '$symbol${totalExpenses.toStringAsFixed(0)}', color: AppTheme.expense),
                 ),
                 Container(width: 1, height: 32, color: AppTheme.of(context).border),
                 Expanded(
@@ -176,11 +165,10 @@ class _ReportsTabState extends State<ReportsTab> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
             child: Text(
-              'FINANCIAL REPORTS',
+              'Financial reports',
               style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: 0.8,
                   color: AppTheme.of(context).textMuted),
             ),
           ),
@@ -193,7 +181,6 @@ class _ReportsTabState extends State<ReportsTab> {
             child: _ReportCard(
               id: 'tax',
               icon: Icons.account_balance_outlined,
-              iconBg: AppTheme.accentDim,
               iconColor: AppTheme.accent,
               title: 'Tax Summary',
               subtitle: 'Income, deductible expenses & estimated tax owed — ready for your accountant',
@@ -219,11 +206,10 @@ class _ReportsTabState extends State<ReportsTab> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: Text(
-              'PER STACK',
+              'Per stack',
               style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: 0.8,
                   color: AppTheme.of(context).textMuted),
             ),
           ),
@@ -262,7 +248,6 @@ class _ReportsTabState extends State<ReportsTab> {
                   child: _ReportCard(
                     id: id,
                     icon: _hustleIcon(stack.hustleType),
-                    iconBg: AppTheme.accentDim,
                     iconColor: AppTheme.accent,
                     title: stack.name,
                     subtitle:
@@ -295,7 +280,8 @@ class _ReportsTabState extends State<ReportsTab> {
 class _ReportCard extends StatelessWidget {
   final String id;
   final IconData icon;
-  final Color iconBg, iconColor;
+  final Color? iconBg;
+  final Color iconColor;
   final String title, subtitle;
   final String badge;
   final Color badgeColor;
@@ -305,7 +291,7 @@ class _ReportCard extends StatelessWidget {
   const _ReportCard({
     required this.id,
     required this.icon,
-    required this.iconBg,
+    this.iconBg,
     required this.iconColor,
     required this.title,
     required this.subtitle,
@@ -323,13 +309,11 @@ class _ReportCard extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: generating
-              ? AppTheme.accentDim
-              : AppTheme.of(context).card,
+          color: AppTheme.of(context).card,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: generating
-                ? AppTheme.accent.withOpacity(0.4)
+                ? AppTheme.accent
                 : AppTheme.of(context).border,
           ),
         ),
@@ -338,7 +322,7 @@ class _ReportCard extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-                color: iconBg, borderRadius: BorderRadius.circular(11)),
+                color: iconBg ?? AppTheme.of(context).cardAlt, borderRadius: BorderRadius.circular(11)),
             child: Icon(icon, size: 20, color: iconColor),
           ),
           const SizedBox(width: 12),
@@ -348,7 +332,7 @@ class _ReportCard extends StatelessWidget {
               children: [
                 Text(title,
                     style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w700)),
+                        fontSize: 13, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 3),
                 Text(subtitle,
                     style: TextStyle(
@@ -373,14 +357,15 @@ class _ReportCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: badgeColor.withOpacity(0.12),
+                    color: AppTheme.of(context).cardAlt,
                     borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: AppTheme.of(context).border),
                   ),
                   child: Text(badge,
                       style: TextStyle(
-                          fontSize: 9,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: badgeColor)),
+                          color: AppTheme.of(context).textSecondary)),
                 ),
                 const SizedBox(height: 4),
                 Icon(Icons.ios_share_outlined,
@@ -406,14 +391,14 @@ class _MiniStat extends StatelessWidget {
         children: [
           Text(value,
               style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: color,
-                  fontFamily: 'Courier')),
+                  )),
           const SizedBox(height: 2),
           Text(label,
               style: TextStyle(
-                  fontSize: 10, color: AppTheme.of(context).textMuted),
+                  fontSize: 11, color: AppTheme.of(context).textMuted),
               textAlign: TextAlign.center),
         ],
       );
@@ -523,9 +508,7 @@ class _ClientCard extends StatelessWidget {
         color: AppTheme.of(context).card,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: hasOutstanding
-              ? AppTheme.amber.withOpacity(0.35)
-              : AppTheme.of(context).border,
+          color: AppTheme.of(context).border,
         ),
       ),
       child: Row(
@@ -535,16 +518,16 @@ class _ClientCard extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: AppTheme.accentDim,
+              color: AppTheme.of(context).cardAlt,
               shape: BoxShape.circle,
               border: Border.all(
-                  color: AppTheme.accent.withOpacity(0.3), width: 1.5),
+                  color: AppTheme.accent, width: 1.5),
             ),
             child: Center(
               child: Text(
                 initial,
                 style: const TextStyle(
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.accent,
                 ),
@@ -561,7 +544,7 @@ class _ClientCard extends StatelessWidget {
                 Text(
                   name,
                   style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w700),
+                      fontSize: 16, fontWeight: FontWeight.w700),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -586,15 +569,16 @@ class _ClientCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: AppTheme.amber.withOpacity(0.12),
+                          color: AppTheme.of(context).cardAlt,
                           borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: AppTheme.of(context).border),
                         ),
                         child: Text(
                           '$symbol${outstanding.toStringAsFixed(0)} owed',
-                          style: const TextStyle(
-                              fontSize: 10,
+                          style: TextStyle(
+                              fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: AppTheme.amber),
+                              color: AppTheme.of(context).textSecondary),
                         ),
                       ),
                     ],
@@ -611,16 +595,15 @@ class _ClientCard extends StatelessWidget {
               Text(
                 '$symbol${revenue.toStringAsFixed(0)}',
                 style: const TextStyle(
-                  fontSize: 15,
+                  fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  fontFamily: 'Courier',
                   color: AppTheme.green,
                 ),
               ),
               Text(
                 'earned',
                 style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 11,
                     color: AppTheme.of(context).textMuted),
               ),
             ],
@@ -833,7 +816,7 @@ class _InvoicesTabState extends State<_InvoicesTab> {
                   ),
                   Text(
                     '$symbol${invoice.amount.toStringAsFixed(2)}',
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.accent),
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.accent),
                   ),
                 ],
               ),
@@ -954,7 +937,7 @@ class _InvoiceCard extends StatelessWidget {
       case InvoiceStatus.viewed:
         return AppTheme.amber;
       case InvoiceStatus.draft:
-        return const Color(0xFF64748B);
+        return AppTheme.expense;
     }
   }
 
@@ -981,7 +964,7 @@ class _InvoiceCard extends StatelessWidget {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         decoration: BoxDecoration(
-          color: AppTheme.red.withOpacity(0.12),
+          color: AppTheme.of(context).cardAlt,
           borderRadius: BorderRadius.circular(14),
         ),
         child: const Icon(Icons.delete_outline, color: AppTheme.red),
@@ -1011,7 +994,7 @@ class _InvoiceCard extends StatelessWidget {
                           child: Text(
                             invoice.clientName,
                             style: const TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.w700),
+                                fontSize: 13, fontWeight: FontWeight.w700),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1036,9 +1019,8 @@ class _InvoiceCard extends StatelessWidget {
               Text(
                 '$symbol${invoice.amount.toStringAsFixed(0)}',
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  fontFamily: 'Courier',
                   color: statusColor,
                 ),
               ),
@@ -1085,7 +1067,7 @@ class _StatusSheetState extends State<_StatusSheet> {
           ),
           const SizedBox(height: 16),
           const Text('Update Status',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
           const SizedBox(height: 16),
           ...InvoiceStatus.values.map((s) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
@@ -1095,10 +1077,8 @@ class _StatusSheetState extends State<_StatusSheet> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 12),
                     decoration: BoxDecoration(
-                      color: _selected == s
-                          ? AppTheme.accentDim
-                          : AppTheme.of(context).card,
-                      borderRadius: BorderRadius.circular(12),
+                      color: AppTheme.of(context).card,
+                      borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                           color: _selected == s
                               ? AppTheme.accent
@@ -1115,7 +1095,7 @@ class _StatusSheetState extends State<_StatusSheet> {
                         Expanded(
                           child: Text(s.label,
                               style: TextStyle(
-                                  fontSize: 14,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                   color: _selected == s
                                       ? AppTheme.accent
@@ -1252,14 +1232,15 @@ class _SampleInvoicePreview extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppTheme.accentDim,
+                    color: AppTheme.of(context).cardAlt,
                     borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppTheme.of(context).border),
                   ),
-                  child: const Text('PREVIEW',
+                  child: Text('PREVIEW',
                       style: TextStyle(
-                          fontSize: 9,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: AppTheme.accent)),
+                          color: AppTheme.of(context).textMuted)),
                 ),
               ]),
             ),
@@ -1290,14 +1271,13 @@ class _SampleInvoicePreview extends StatelessWidget {
                                 children: [
                                   const Text('FROM',
                                       style: TextStyle(
-                                          fontSize: 9,
+                                          fontSize: 11,
                                           fontWeight: FontWeight.w600,
-                                          letterSpacing: 0.8,
                                           color: Colors.grey)),
                                   const SizedBox(height: 4),
                                   const Text('Alex Johnson',
                                       style: TextStyle(
-                                          fontSize: 14,
+                                          fontSize: 13,
                                           fontWeight: FontWeight.w700)),
                                   Text('alex@example.com',
                                       style: TextStyle(
@@ -1312,7 +1292,7 @@ class _SampleInvoicePreview extends StatelessWidget {
                               children: [
                                 const Text('INV-202412-001',
                                     style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 13,
                                         fontWeight: FontWeight.w700)),
                                 Text('Due 15 Jan 2025',
                                     style: TextStyle(
@@ -1331,14 +1311,13 @@ class _SampleInvoicePreview extends StatelessWidget {
                                 children: [
                                   const Text('TO',
                                       style: TextStyle(
-                                          fontSize: 9,
+                                          fontSize: 11,
                                           fontWeight: FontWeight.w600,
-                                          letterSpacing: 0.8,
                                           color: Colors.grey)),
                                   const SizedBox(height: 4),
                                   const Text('Acme Corp',
                                       style: TextStyle(
-                                          fontSize: 14,
+                                          fontSize: 13,
                                           fontWeight: FontWeight.w700)),
                                   Text('billing@acme.com',
                                       style: TextStyle(
@@ -1376,21 +1355,21 @@ class _SampleInvoicePreview extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: AppTheme.accentDim,
-                        borderRadius: BorderRadius.circular(12),
+                        color: AppTheme.of(context).cardAlt,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppTheme.of(context).border),
                       ),
                       child: Row(children: [
                         const Text('TOTAL',
                             style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 0.5)),
                         const Spacer(),
                         Text('${symbol}1,600.00',
                             style: const TextStyle(
-                                fontSize: 18,
+                                fontSize: 16,
                                 fontWeight: FontWeight.w700,
-                                fontFamily: 'Courier',
                                 color: AppTheme.accent)),
                       ]),
                     ),
@@ -1400,7 +1379,7 @@ class _SampleInvoicePreview extends StatelessWidget {
                     Text(
                       'Your invoice will be exported as a professional PDF you can send directly to your client.',
                       style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 13,
                           color: AppTheme.of(context).textSecondary,
                           height: 1.5),
                       textAlign: TextAlign.center,
@@ -1458,7 +1437,6 @@ class _SampleLineItem extends StatelessWidget {
           style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              fontFamily: 'Courier',
               color: AppTheme.accent),
         ),
       ]),
@@ -1481,9 +1459,9 @@ class _SummaryPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.25)),
+        color: AppTheme.of(context).card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.of(context).border),
       ),
       child: Row(
         children: [
@@ -1499,15 +1477,15 @@ class _SummaryPill extends StatelessWidget {
               children: [
                 Text(label,
                     style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: AppTheme.of(context).textMuted)),
                 Text(value,
                     style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 13,
                         fontWeight: FontWeight.w700,
                         color: color,
-                        fontFamily: 'Courier')),
+                        )),
               ],
             ),
           ),
@@ -1535,7 +1513,7 @@ class _Chip extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? AppTheme.accentDim : AppTheme.of(context).card,
+          color: AppTheme.of(context).card,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
               color: selected

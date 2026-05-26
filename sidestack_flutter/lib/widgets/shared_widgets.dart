@@ -40,40 +40,33 @@ class SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = isProfit
-        ? (value >= 0 ? AppTheme.green : AppTheme.red)
-        : (label == 'Expenses' ? AppTheme.red : AppTheme.green);
+        ? (value >= 0 ? AppTheme.green : AppTheme.expense)
+        : (label == 'Expenses' ? AppTheme.expense : AppTheme.green);
 
-    // For expenses, going up is bad (red), going down is good (green).
+    // For expenses, going up is concerning (expense color), going down is good (green).
     final trendUp = (trend ?? 0) > 0;
     final trendColor = label == 'Expenses'
-        ? (trendUp ? AppTheme.red : AppTheme.green)
-        : (trendUp ? AppTheme.green : AppTheme.red);
+        ? (trendUp ? AppTheme.expense : AppTheme.green)
+        : (trendUp ? AppTheme.green : AppTheme.expense);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: highlight
-            ? (value >= 0 ? AppTheme.greenDim : AppTheme.redDim)
-            : AppTheme.of(context).card,
+        color: AppTheme.of(context).card,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: highlight
-              ? (value >= 0
-                  ? AppTheme.green.withOpacity(0.25)
-                  : AppTheme.red.withOpacity(0.25))
-              : AppTheme.of(context).border,
+          color: AppTheme.of(context).border,
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            label.toUpperCase(),
+            label,
             style: TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w600,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
               color: AppTheme.of(context).textMuted,
-              letterSpacing: 0.8,
             ),
           ),
           const SizedBox(height: 5),
@@ -85,9 +78,8 @@ class SummaryCard extends StatelessWidget {
             builder: (_, animated, __) => Text(
               formatCurrency(animated, symbol),
               style: TextStyle(
-                fontFamily: 'Courier',
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
                 color: highlight ? color : AppTheme.of(context).textPrimary,
               ),
             ),
@@ -98,14 +90,14 @@ class SummaryCard extends StatelessWidget {
               children: [
                 Icon(
                   trendUp ? Icons.arrow_upward : Icons.arrow_downward,
-                  size: 9,
+                  size: 11,
                   color: trendColor,
                 ),
                 const SizedBox(width: 2),
                 Text(
                   '${trend!.abs().toStringAsFixed(0)}%',
                   style: TextStyle(
-                    fontSize: 9,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: trendColor,
                   ),
@@ -145,19 +137,17 @@ class StackMetricTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            label.toUpperCase(),
+            label,
             style: TextStyle(
-              fontSize: 8,
-              fontWeight: FontWeight.w600,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
               color: AppTheme.of(context).textMuted,
-              letterSpacing: 0.6,
             ),
           ),
           const SizedBox(height: 3),
           Text(
             value,
             style: TextStyle(
-              fontFamily: 'Courier',
               fontSize: 11,
               fontWeight: FontWeight.w600,
               color: valueColor ?? AppTheme.of(context).textPrimary,
@@ -191,12 +181,11 @@ class SectionHeader extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            title.toUpperCase(),
+            title,
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
               color: AppTheme.of(context).textMuted,
-              letterSpacing: 1,
             ),
           ),
           if (actionLabel != null)
@@ -258,25 +247,26 @@ class StatCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                label.toUpperCase(),
+                label,
                 style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
                   color: AppTheme.of(context).textMuted,
-                  letterSpacing: 0.8,
                 ),
               ),
               const SizedBox(height: 3),
-              Text(
-                value,
-                style: TextStyle(
-                  fontFamily: 'Courier',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: valueColor,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                    color: valueColor,
+                  ),
+                  maxLines: 1,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -582,5 +572,116 @@ class EmptyState extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// ─── Category icon — emoji + tinted rounded rect ─────────────────────────────
+
+/// Returns (emoji, tint) for a given transaction category and income/expense type.
+({String emoji, Color tint}) categoryEmojiFor(String category, bool isIncome) {
+  if (isIncome) {
+    switch (category) {
+      case 'Sales':             return (emoji: '🏷️', tint: const Color(0xFF16A34A));
+      case 'Freelance':         return (emoji: '💼', tint: const Color(0xFF3B82F6));
+      case 'Consulting':        return (emoji: '🧠', tint: const Color(0xFF8B5CF6));
+      case 'Content / Creator': return (emoji: '🎬', tint: const Color(0xFFF43F5E));
+      case 'Commission':        return (emoji: '💰', tint: const Color(0xFFF59E0B));
+      default:                  return (emoji: '○', tint: const Color(0xFF16A34A));
+    }
+  } else {
+    switch (category) {
+      case 'Motor Vehicle':            return (emoji: '🚗', tint: const Color(0xFF64748B));
+      case 'Tools & Equipment':        return (emoji: '🔧', tint: const Color(0xFFF97316));
+      case 'Home Office':              return (emoji: '🏠', tint: const Color(0xFF6366F1));
+      case 'Marketing':                return (emoji: '📣', tint: const Color(0xFFF43F5E));
+      case 'Professional Fees':        return (emoji: '⚖️', tint: const Color(0xFF8B5CF6));
+      case 'Travel':                   return (emoji: '✈️', tint: const Color(0xFF0EA5E9));
+      case 'Meals':                    return (emoji: '🍽️', tint: const Color(0xFFF59E0B));
+      case 'Software & Subscriptions': return (emoji: '💻', tint: const Color(0xFF3B82F6));
+      case 'Supplies':                 return (emoji: '📦', tint: const Color(0xFFF97316));
+      case 'Insurance':                return (emoji: '🛡️', tint: const Color(0xFF64748B));
+      default:                         return (emoji: '📌', tint: const Color(0xFF64748B));
+    }
+  }
+}
+
+/// 34×34 rounded-rect with an emoji on a colour-tinted background.
+/// Replaces the old +/− circle type indicator on transaction rows.
+class CategoryIconWidget extends StatelessWidget {
+  final String category;
+  final bool isIncome;
+  const CategoryIconWidget({
+    super.key,
+    required this.category,
+    required this.isIncome,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final (:emoji, :tint) = categoryEmojiFor(category, isIncome);
+    return Container(
+      width: 34,
+      height: 34,
+      decoration: BoxDecoration(
+        color: tint.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Center(
+        child: Text(emoji, style: const TextStyle(fontSize: 16)),
+      ),
+    );
+  }
+}
+
+// ─── AppToast ────────────────────────────────────────────────────────────────
+//
+// Unified feedback toast. Replaces all raw ScaffoldMessenger.showSnackBar calls.
+//
+//   AppToast.show(context, 'Exported report.pdf');
+//   AppToast.error(context, 'Could not connect. Check your connection.');
+//
+// Behaviour:
+//   • Floating, 2-second duration, Sora 13px text
+//   • .show()  — uses card background + textPrimary (neutral info)
+//   • .error() — uses card background + AppTheme.expense text (calm, no red)
+
+class AppToast {
+  AppToast._();
+
+  static void show(BuildContext context, String message) {
+    _show(context, message, isError: false);
+  }
+
+  static void error(BuildContext context, String message) {
+    _show(context, message, isError: true);
+  }
+
+  static void _show(BuildContext context, String message,
+      {required bool isError}) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            message,
+            style: TextStyle(
+              fontFamily: 'Sora',
+              fontSize: 13,
+              color: isError
+                  ? AppTheme.expense
+                  : AppTheme.of(context).textPrimary,
+            ),
+          ),
+          backgroundColor: AppTheme.of(context).card,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: BorderSide(color: AppTheme.of(context).border),
+          ),
+          elevation: 4,
+          duration: const Duration(seconds: 2),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        ),
+      );
   }
 }

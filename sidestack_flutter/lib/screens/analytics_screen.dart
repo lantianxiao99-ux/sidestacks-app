@@ -10,6 +10,7 @@ import '../widgets/shared_widgets.dart';
 import '../widgets/add_transaction_sheet.dart';
 import '../widgets/paywall_sheet.dart';
 import '../services/tax_pdf_service.dart';
+import 'stacks_hub_screen.dart';
 
 // Public entry point so the Dashboard can open the layout editor directly.
 void showInsightsLayoutEditor(BuildContext context) {
@@ -44,17 +45,27 @@ const _kTaxDeductibleExpenses = {
 };
 
 // ─── Colour palettes ──────────────────────────────────────────────────────────
+// 8 perceptually distinct colors for income/expense donut charts.
+// Chosen to be separable at small sizes even under colorblindness constraints.
 const _kIncomeColors = [
-  AppTheme.green,
-  Color(0xFF26C6A2),
-  Color(0xFF4FC3F7),
-  Color(0xFF81C784),
+  AppTheme.green,           // rich green    — primary income
+  Color(0xFF3B82F6),        // blue          — contracts/services
+  AppTheme.amber,           // amber/gold    — sales/products
+  Color(0xFF8B5CF6),        // violet        — creative
+  Color(0xFF06B6D4),        // cyan          — digital
+  Color(0xFFF97316),        // orange        — content
+  Color(0xFF10B981),        // emerald       — subscriptions
+  Color(0xFFEC4899),        // rose          — commissions
 ];
 const _kExpenseColors = [
-  AppTheme.red,
-  AppTheme.amber,
-  AppTheme.accent,
-  Color(0xFFE040FB),
+  AppTheme.expense,         // slate         — primary expense
+  AppTheme.amber,           // amber         — equipment
+  Color(0xFF8B5CF6),        // violet        — software
+  Color(0xFF3B82F6),        // blue          — travel
+  Color(0xFF06B6D4),        // cyan          — marketing
+  Color(0xFFF97316),        // orange        — fees
+  Color(0xFF10B981),        // emerald       — supplies
+  Color(0xFFEC4899),        // rose          — other
 ];
 const _kDow = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -81,7 +92,7 @@ const _kSectionLabels = <String, String>{
   kAnalyticsSectionClientIntelligence: 'Client Intelligence',
   kAnalyticsSectionHourlyRate:         'Hourly Rate Tracker',
   kAnalyticsSectionGoalVelocity:       'Goal Velocity',
-  kAnalyticsSectionAnomalies:          'Spending Anomalies',
+  kAnalyticsSectionAnomalies:          'Spending Changes',
 };
 
 const _kSectionIcons = <String, IconData>{
@@ -596,6 +607,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           title: 'Revenue concentration risk',
           body: '${topEntry.key} accounts for $pct% of your income. A single client at more than 60% creates fragility. Prioritise landing at least one more.',
           action: 'Diversify client mix',
+          onAction: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const StacksHubScreen())),
         ));
       }
     }
@@ -612,6 +625,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             title: 'Expense spike this month',
             body: 'Your costs jumped $expPct% vs last month. Review your expense log. If it\'s a one-off purchase that\'s fine, but watch for repeat spend.',
             action: 'Review expenses',
+            onAction: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const StacksHubScreen())),
           ));
         }
       }
@@ -624,6 +639,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             title: 'Income dropped ${incPct.abs()}% this month',
             body: 'Revenue fell sharply compared to last month. Consider whether any recurring clients paused, or whether seasonal factors are at play.',
             action: 'Investigate revenue drop',
+            onAction: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const StacksHubScreen())),
           ));
         }
       }
@@ -733,6 +750,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           earned: stack.thisMonthIncome,
           progress: stack.monthlyGoalProgress,
           paceRatio: paceRatio,
+          dayOfMonth: dayOfMonth,
         ));
       }
     }
@@ -853,23 +871,21 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      color: AppTheme.green.withOpacity(0.1),
+                      color: AppTheme.of(context).cardAlt,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                          color: AppTheme.green.withOpacity(0.3)),
                     ),
                     child: Row(
                       children: [
                         Icon(Icons.savings_outlined,
-                            size: 14, color: AppTheme.green),
+                            size: 14, color: AppTheme.of(context).textSecondary),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'Est. tax deductions: $symbol${estDeductions.toStringAsFixed(0)}',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: AppTheme.green,
+                              color: AppTheme.of(context).textSecondary,
                             ),
                           ),
                         ),
@@ -1051,7 +1067,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             if (!_showProCard(kAnalyticsSectionAnomalies)) return null;
             return _ProLockedCard(
               icon: Icons.search_outlined,
-              title: 'Spending Anomalies',
+              title: 'Spending Changes',
               description: 'Automatically flags unusual spend in any category vs your prior period average.',
               onUpgrade: () => showPaywallSheet(context),
               onDismiss: () => _dismissProCard(kAnalyticsSectionAnomalies),
@@ -1059,7 +1075,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           }
           if (anomalies.isEmpty) return null;
           return _ChartCard(
-            title: 'Spending Anomalies',
+            title: 'Spending Changes',
             subtitle: 'Category changes vs prior period',
             child: _AnomaliesCard(anomalies: anomalies.take(5).toList(), symbol: symbol),
           );
@@ -1091,7 +1107,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               children: [
                 Text('Analytics',
                     style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
                         letterSpacing: -0.4)),
                 Text(
@@ -1117,22 +1133,21 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   margin: const EdgeInsets.only(top: 10, bottom: 10),
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF14B8A6).withOpacity(0.12),
+                    color: AppTheme.of(context).card,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: const Color(0xFF14B8A6).withOpacity(0.35)),
+                    border: Border.all(color: AppTheme.of(context).border),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.insights_outlined,
-                          size: 14, color: Color(0xFF14B8A6)),
-                      SizedBox(width: 4),
+                          size: 14, color: AppTheme.of(context).textSecondary),
+                      const SizedBox(width: 4),
                       Text('Summary',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF14B8A6),
+                            color: AppTheme.of(context).textSecondary,
                           )),
                     ],
                   ),
@@ -1145,18 +1160,17 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   margin: const EdgeInsets.only(right: 16, top: 10, bottom: 10),
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: AppTheme.accentDim,
+                    color: AppTheme.of(context).card,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: AppTheme.accent.withOpacity(0.35)),
+                    border: Border.all(color: AppTheme.of(context).border),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(Icons.tune_outlined,
+                    children: [
+                      const Icon(Icons.tune_outlined,
                           size: 13, color: AppTheme.accent),
-                      SizedBox(width: 4),
-                      Text('Customise',
+                      const SizedBox(width: 4),
+                      const Text('Customise',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -1263,7 +1277,7 @@ class _DatePresetStrip extends StatelessWidget {
                   child: Text(
                     preset,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight:
                           active ? FontWeight.w600 : FontWeight.w400,
                       color: active ? Colors.white : theme.textSecondary,
@@ -1305,7 +1319,7 @@ class _DatePresetStrip extends StatelessWidget {
                   Text(
                     selected == 'Custom' ? 'Custom ✕' : 'Custom',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: selected == 'Custom'
                           ? FontWeight.w600
                           : FontWeight.w400,
@@ -1364,7 +1378,7 @@ class _KpiRow extends StatelessWidget {
           label: 'Best Month',
           value: bestLabel,
           sub: formatCurrency(bestVal, symbol),
-          subColor: bestVal >= 0 ? AppTheme.green : AppTheme.red,
+          subColor: bestVal >= 0 ? AppTheme.green : AppTheme.expense,
         ),
       ),
       const SizedBox(width: 8),
@@ -1375,18 +1389,18 @@ class _KpiRow extends StatelessWidget {
           label: 'Avg / Month',
           value: formatCurrency(avgMonthly, symbol),
           sub: avgMonthly >= 0 ? 'profit' : 'loss',
-          subColor: avgMonthly >= 0 ? AppTheme.green : AppTheme.red,
+          subColor: avgMonthly >= 0 ? AppTheme.green : AppTheme.expense,
         ),
       ),
       const SizedBox(width: 8),
       Expanded(
         child: _KpiTile(
           icon: Icons.percent_outlined,
-          iconColor: margin >= 0 ? AppTheme.green : AppTheme.red,
+          iconColor: margin >= 0 ? AppTheme.green : AppTheme.expense,
           label: 'Margin',
           value: formatPercent(margin),
           sub: 'overall',
-          subColor: margin >= 0 ? AppTheme.green : AppTheme.red,
+          subColor: margin >= 0 ? AppTheme.green : AppTheme.expense,
         ),
       ),
     ]);
@@ -1425,19 +1439,17 @@ class _KpiTile extends StatelessWidget {
           Icon(icon, size: 14, color: iconColor),
           const SizedBox(height: 7),
           Text(
-            label.toUpperCase(),
+            label,
             style: TextStyle(
-                fontSize: 8,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.of(context).textMuted,
-                letterSpacing: 0.6),
+                color: AppTheme.of(context).textMuted),
           ),
           const SizedBox(height: 3),
           Text(
             value,
             style: TextStyle(
-              fontFamily: 'Courier',
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w700,
               color: AppTheme.of(context).textPrimary,
             ),
@@ -1448,7 +1460,7 @@ class _KpiTile extends StatelessWidget {
             Text(
               sub!,
               style: TextStyle(
-                fontSize: 9,
+                fontSize: 11,
                 color: subColor ?? AppTheme.of(context).textMuted,
                 fontWeight: FontWeight.w500,
               ),
@@ -1492,7 +1504,7 @@ class _ProfitTrendChart extends StatelessWidget {
               if (i < 0 || i >= months.length) return const SizedBox();
               return Text(months[i],
                   style: TextStyle(
-                      fontSize: 9, color: AppTheme.of(context).textMuted));
+                      fontSize: 11, color: AppTheme.of(context).textMuted));
             },
           ),
         ),
@@ -1555,7 +1567,7 @@ class _IncomeExpenseChart extends StatelessWidget {
               if (i < 0 || i >= months.length) return const SizedBox();
               return Text(months[i],
                   style: TextStyle(
-                      fontSize: 9, color: AppTheme.of(context).textMuted));
+                      fontSize: 11, color: AppTheme.of(context).textMuted));
             },
           ),
         ),
@@ -1571,7 +1583,7 @@ class _IncomeExpenseChart extends StatelessWidget {
                   const BorderRadius.vertical(top: Radius.circular(4))),
           BarChartRodData(
               toY: d['expense']!,
-              color: AppTheme.red,
+              color: AppTheme.expense,
               width: 8,
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(4))),
@@ -1597,7 +1609,7 @@ class _CumulativeChart extends StatelessWidget {
       return FlSpot(e.key.toDouble(), running);
     }).toList();
     final positive = running >= 0;
-    final lineColor = positive ? AppTheme.accent : AppTheme.red;
+    final lineColor = positive ? AppTheme.accent : AppTheme.expense;
 
     return LineChart(LineChartData(
       gridData: FlGridData(
@@ -1623,7 +1635,7 @@ class _CumulativeChart extends StatelessWidget {
               if (i < 0 || i >= months.length) return const SizedBox();
               return Text(months[i],
                   style: TextStyle(
-                      fontSize: 9, color: AppTheme.of(context).textMuted));
+                      fontSize: 11, color: AppTheme.of(context).textMuted));
             },
           ),
         ),
@@ -1703,15 +1715,14 @@ class _PieWithLegend extends StatelessWidget {
                   Expanded(
                     child: Text(e.value.key,
                         style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 11,
                             color: AppTheme.of(context).textSecondary),
                         overflow: TextOverflow.ellipsis),
                   ),
                   const SizedBox(width: 4),
                   Text('$pct%',
                       style: TextStyle(
-                          fontFamily: 'Courier',
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color: AppTheme.of(context).textPrimary)),
                 ]),
@@ -1761,7 +1772,7 @@ class _TopCategoriesList extends StatelessWidget {
               width: 6,
               height: 6,
               decoration: BoxDecoration(
-                color: entry.isIncome ? AppTheme.green : AppTheme.red,
+                color: entry.isIncome ? AppTheme.green : AppTheme.expense,
                 shape: BoxShape.circle,
               ),
             ),
@@ -1790,10 +1801,9 @@ class _TopCategoriesList extends StatelessWidget {
             Text(
               formatCurrency(entry.amount, symbol),
               style: TextStyle(
-                fontFamily: 'Courier',
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: entry.isIncome ? AppTheme.green : AppTheme.red,
+                color: entry.isIncome ? AppTheme.green : AppTheme.expense,
               ),
             ),
           ]),
@@ -1821,9 +1831,9 @@ class _DayOfWeekChart extends StatelessWidget {
     final maxVal = data.reduce((a, b) => a > b ? a : b);
     if (maxVal == 0) {
       return Center(
-        child: Text('Not enough data',
+        child: Text('Log more transactions to see this chart.',
             style:
-                TextStyle(color: AppTheme.of(context).textMuted, fontSize: 12)),
+                TextStyle(color: AppTheme.of(context).textMuted, fontSize: 13)),
       );
     }
     return BarChart(BarChartData(
@@ -1847,7 +1857,7 @@ class _DayOfWeekChart extends StatelessWidget {
               if (i < 0 || i >= _kDow.length) return const SizedBox();
               return Text(_kDow[i],
                   style: TextStyle(
-                      fontSize: 9, color: AppTheme.of(context).textMuted));
+                      fontSize: 11, color: AppTheme.of(context).textMuted));
             },
           ),
         ),
@@ -1903,7 +1913,7 @@ class _StackComparisonChart extends StatelessWidget {
                 padding: const EdgeInsets.only(right: 4),
                 child: Text(stacks[i].key,
                     style: TextStyle(
-                        fontSize: 9, color: AppTheme.of(context).textMuted),
+                        fontSize: 11, color: AppTheme.of(context).textMuted),
                     textAlign: TextAlign.right,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
@@ -1917,7 +1927,7 @@ class _StackComparisonChart extends StatelessWidget {
         return BarChartGroupData(x: e.key, barRods: [
           BarChartRodData(
             toY: profit,
-            color: profit >= 0 ? AppTheme.green : AppTheme.red,
+            color: profit >= 0 ? AppTheme.green : AppTheme.expense,
             width: 18,
             borderRadius: const BorderRadius.all(Radius.circular(4)),
           ),
@@ -1986,7 +1996,7 @@ class _SummarySheet extends StatelessWidget {
         ? const Color(0xFF94A3B8)
         : momUp
             ? AppTheme.green
-            : AppTheme.red;
+            : AppTheme.expense;
     final momLabel = d.momChangePct == null
         ? '—'
         : '${momUp ? '+' : ''}${d.momChangePct!.toStringAsFixed(0)}%';
@@ -2060,10 +2070,10 @@ class _SummarySheet extends StatelessWidget {
                                 SizedBox(width: 5),
                                 Text('AI Summary',
                                     style: TextStyle(
-                                        fontSize: 10,
+                                        fontSize: 11,
                                         fontWeight: FontWeight.w700,
                                         color: Color(0xFF14B8A6),
-                                        letterSpacing: 0.4)),
+)),
                               ],
                             ),
                           ),
@@ -2071,7 +2081,7 @@ class _SummarySheet extends StatelessWidget {
                           Text(
                             '${d.txCount} transactions analysed',
                             style: const TextStyle(
-                                fontSize: 10, color: Color(0xFF64748B)),
+                                fontSize: 11, color: Color(0xFF64748B)),
                           ),
                         ]),
                         const SizedBox(height: 14),
@@ -2082,7 +2092,7 @@ class _SummarySheet extends StatelessWidget {
                             value: _fmt(d.profit),
                             valueColor: d.profit >= 0
                                 ? AppTheme.green
-                                : AppTheme.red,
+                                : AppTheme.expense,
                           ),
                           _divider(),
                           _StatCell(
@@ -2092,7 +2102,7 @@ class _SummarySheet extends StatelessWidget {
                                 ? AppTheme.green
                                 : d.profitMarginPct > 15
                                     ? const Color(0xFFFBBF24)
-                                    : AppTheme.red,
+                                    : AppTheme.expense,
                           ),
                           _divider(),
                           _StatCell(
@@ -2117,7 +2127,7 @@ class _SummarySheet extends StatelessWidget {
                             Text(
                               'On track for ${_fmt(d.projectionAnnual)} this year',
                               style: const TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 13,
                                   color: Color(0xFFCBD5E1),
                                   fontWeight: FontWeight.w500),
                             ),
@@ -2134,11 +2144,10 @@ class _SummarySheet extends StatelessWidget {
             const Padding(
               padding: EdgeInsets.fromLTRB(20, 22, 16, 8),
               child: Text(
-                'WHAT THIS MEANS',
+                'What this means',
                 style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: 1.0,
                     color: Color(0xFF475569)),
               ),
             ),
@@ -2200,7 +2209,7 @@ class _SummarySheet extends StatelessWidget {
               child: Text(
                 'Based on ${d.txCount} logged transactions across ${DateTime.now().year}.',
                 style: const TextStyle(
-                    fontSize: 10, color: Color(0xFF334155)),
+                    fontSize: 11, color: Color(0xFF334155)),
               ),
             ),
           ],
@@ -2229,14 +2238,14 @@ class _StatCell extends StatelessWidget {
           children: [
             Text(value,
                 style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: valueColor,
-                    fontFamily: 'Courier')),
+                    )),
             const SizedBox(height: 2),
             Text(label,
                 style: const TextStyle(
-                    fontSize: 10, color: Color(0xFF64748B)),
+                    fontSize: 11, color: Color(0xFF64748B)),
                 textAlign: TextAlign.center),
           ],
         ),
@@ -2259,21 +2268,20 @@ class _AiInsightCard extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: const Color(0xFF14B8A6).withOpacity(0.12),
+            color: colors.cardAlt,
             borderRadius: BorderRadius.circular(6),
           ),
-          child: const Row(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.insights_outlined, size: 12, color: Color(0xFF14B8A6)),
-              SizedBox(width: 5),
+              Icon(Icons.insights_outlined, size: 12, color: colors.textSecondary),
+              const SizedBox(width: 5),
               Text(
                 'Your Summary',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF14B8A6),
-                  letterSpacing: 0.2,
+                  color: colors.textSecondary,
                 ),
               ),
             ],
@@ -2284,7 +2292,7 @@ class _AiInsightCard extends StatelessWidget {
         Text(
           text,
           style: TextStyle(
-            fontSize: 14,
+            fontSize: 13,
             height: 1.65,
             color: colors.textPrimary,
             fontWeight: FontWeight.w400,
@@ -2335,17 +2343,17 @@ class _ProLockedCard extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF14B8A6).withOpacity(0.12),
+                  color: colors.cardAlt,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, size: 18, color: const Color(0xFF14B8A6)),
+                child: Icon(icon, size: 18, color: AppTheme.accent),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   title,
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: colors.textPrimary,
                   ),
@@ -2354,16 +2362,16 @@ class _ProLockedCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF14B8A6).withOpacity(0.12),
+                  color: colors.cardAlt,
                   borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: colors.border),
                 ),
                 child: const Text(
                   'Pro',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF14B8A6),
-                    letterSpacing: 0.3,
+                    color: AppTheme.accent,
                   ),
                 ),
               ),
@@ -2429,7 +2437,7 @@ class _MarginOverTimeChart extends StatelessWidget {
         .toList();
     final months = data.map((e) => e.key).toList();
     final last = data.last.value;
-    final lineColor = last >= 0 ? AppTheme.accent : AppTheme.red;
+    final lineColor = last >= 0 ? AppTheme.accent : AppTheme.expense;
 
     return LineChart(LineChartData(
       gridData: FlGridData(
@@ -2455,7 +2463,7 @@ class _MarginOverTimeChart extends StatelessWidget {
               if (i < 0 || i >= months.length) return const SizedBox();
               return Text(months[i],
                   style:
-                      TextStyle(fontSize: 9, color: AppTheme.of(context).textMuted));
+                      TextStyle(fontSize: 11, color: AppTheme.of(context).textMuted));
             },
           ),
         ),
@@ -2530,8 +2538,7 @@ class _ExpenseRatioCard extends StatelessWidget {
               child: Text(
                 '$pct% of income spent',
                 style: TextStyle(
-                    fontFamily: 'Courier',
-                    fontSize: 20,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: barColor),
               ),
@@ -2541,15 +2548,16 @@ class _ExpenseRatioCard extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: barColor.withOpacity(0.12),
+                color: AppTheme.of(context).cardAlt,
                 borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppTheme.of(context).border),
               ),
               child: Text(
                 label,
                 style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: barColor),
+                    color: AppTheme.of(context).textSecondary),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -2594,16 +2602,16 @@ class _ExpenseRatioCard extends StatelessWidget {
           children: [
             Text('0%',
                 style:
-                    TextStyle(fontSize: 9, color: AppTheme.of(context).textMuted)),
+                    TextStyle(fontSize: 11, color: AppTheme.of(context).textMuted)),
             Text('50%',
                 style:
-                    TextStyle(fontSize: 9, color: AppTheme.of(context).textMuted)),
+                    TextStyle(fontSize: 11, color: AppTheme.of(context).textMuted)),
             Text('70%',
                 style:
-                    TextStyle(fontSize: 9, color: AppTheme.of(context).textMuted)),
+                    TextStyle(fontSize: 11, color: AppTheme.of(context).textMuted)),
             Text('100%',
                 style:
-                    TextStyle(fontSize: 9, color: AppTheme.of(context).textMuted)),
+                    TextStyle(fontSize: 11, color: AppTheme.of(context).textMuted)),
           ],
         ),
       ],
@@ -2628,15 +2636,15 @@ class _ProjectionBanner extends StatelessWidget {
     final positive = annualProjection >= 0;
     // Green for profit growth, red for loss — purple accent made banners look
     // washed-out in light mode and carries no semantic meaning here.
-    final accentColor = positive ? AppTheme.green : AppTheme.red;
-    final dimColor    = positive ? AppTheme.greenDim : AppTheme.redDim;
+    final accentColor = positive ? AppTheme.green : AppTheme.expense;
+    final dimColor    = positive ? AppTheme.greenDim : AppTheme.expense.withOpacity(0.07);
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: dimColor,
+        color: AppTheme.of(context).card,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: accentColor.withOpacity(0.30)),
+        border: Border.all(color: AppTheme.of(context).border),
       ),
       child: Row(
         children: [
@@ -2644,7 +2652,7 @@ class _ProjectionBanner extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: accentColor.withOpacity(0.18),
+              color: AppTheme.of(context).cardAlt,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -2661,19 +2669,17 @@ class _ProjectionBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'AT THIS RATE',
+                  'At this rate',
                   style: TextStyle(
-                      fontSize: 8,
+                      fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: accentColor.withOpacity(0.75),
-                      letterSpacing: 1.0),
+                      color: AppTheme.of(context).textMuted),
                 ),
                 const SizedBox(height: 3),
                 RichText(
                   text: TextSpan(
                     style: const TextStyle(
-                        fontFamily: 'Courier',
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.w700),
                     children: [
                       TextSpan(
@@ -2683,7 +2689,7 @@ class _ProjectionBanner extends StatelessWidget {
                       TextSpan(
                         text: ' / year',
                         style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: FontWeight.w400,
                             color: AppTheme.of(context).textMuted),
                       ),
@@ -2694,7 +2700,7 @@ class _ProjectionBanner extends StatelessWidget {
                 Text(
                   '${formatCurrency(monthlyAvg, symbol)} avg monthly profit · 3-month trend',
                   style: TextStyle(
-                      fontSize: 10, color: AppTheme.of(context).textSecondary),
+                      fontSize: 11, color: AppTheme.of(context).textSecondary),
                 ),
               ],
             ),
@@ -2729,16 +2735,15 @@ class _ChartCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title.toUpperCase(),
+              Text(title,
                   style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: AppTheme.of(context).textMuted,
-                      letterSpacing: 0.8)),
+                      color: AppTheme.of(context).textMuted)),
               if (subtitle != null)
                 Text(subtitle!,
                     style: TextStyle(
-                        fontSize: 9,
+                        fontSize: 11,
                         color: AppTheme.of(context).textMuted,
                         fontWeight: FontWeight.w400)),
             ],
@@ -2877,7 +2882,7 @@ class _TaxEstimateCardState extends State<_TaxEstimateCard> {
             Text(
               'Tax year',
               style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: AppTheme.of(context).textSecondary),
             ),
@@ -2889,9 +2894,7 @@ class _TaxEstimateCardState extends State<_TaxEstimateCard> {
                 margin: const EdgeInsets.only(left: 6),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                 decoration: BoxDecoration(
-                  color: _selectedYear == y
-                      ? AppTheme.accentDim
-                      : AppTheme.of(context).card,
+                  color: AppTheme.of(context).card,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                       color: _selectedYear == y
@@ -2919,13 +2922,13 @@ class _TaxEstimateCardState extends State<_TaxEstimateCard> {
             _TaxMetric(
               label: 'Net profit',
               value: formatCurrency(yearProfit.abs(), widget.symbol),
-              color: yearProfit >= 0 ? AppTheme.green : AppTheme.red,
+              color: yearProfit >= 0 ? AppTheme.green : AppTheme.expense,
             ),
             const SizedBox(width: 8),
             _TaxMetric(
               label: 'Est. tax',
               value: formatCurrency(taxOnProfit, widget.symbol),
-              color: AppTheme.red,
+              color: AppTheme.expense,
             ),
             const SizedBox(width: 8),
             _TaxMetric(
@@ -2952,7 +2955,7 @@ class _TaxEstimateCardState extends State<_TaxEstimateCard> {
                       ? 'Deductible expenses · ${formatCurrency(totalDeductions, widget.symbol)} total'
                       : 'No deductible expenses logged this year',
                   style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: totalDeductions > 0
                           ? AppTheme.green
@@ -2993,15 +2996,14 @@ class _TaxEstimateCardState extends State<_TaxEstimateCard> {
                   Expanded(
                     child: Text(e.key,
                         style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 13,
                             color: AppTheme.of(context).textPrimary)),
                   ),
                   Text(
                     formatCurrency(e.value, widget.symbol),
                     style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        fontFamily: 'Courier',
                         color: AppTheme.green),
                   ),
                   const SizedBox(width: 8),
@@ -3009,15 +3011,15 @@ class _TaxEstimateCardState extends State<_TaxEstimateCard> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: AppTheme.greenDim,
+                      color: AppTheme.of(context).cardAlt,
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       'saves ${formatCurrency(e.value * _rate, widget.symbol)}',
-                      style: const TextStyle(
-                          fontSize: 9,
+                      style: TextStyle(
+                          fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: AppTheme.green),
+                          color: AppTheme.of(context).textMuted),
                     ),
                   ),
                 ]),
@@ -3030,10 +3032,8 @@ class _TaxEstimateCardState extends State<_TaxEstimateCard> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: AppTheme.greenDim,
+                    color: AppTheme.of(context).cardAlt,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                        color: AppTheme.green.withOpacity(0.25)),
                   ),
                   child: Row(children: [
                     const Icon(Icons.celebration_outlined,
@@ -3068,7 +3068,7 @@ class _TaxEstimateCardState extends State<_TaxEstimateCard> {
             Text(
               'Tax rate',
               style: TextStyle(
-                  fontSize: 12, color: AppTheme.of(context).textSecondary),
+                  fontSize: 13, color: AppTheme.of(context).textSecondary),
             ),
             const Spacer(),
             GestureDetector(
@@ -3077,24 +3077,23 @@ class _TaxEstimateCardState extends State<_TaxEstimateCard> {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: AppTheme.accentDim,
+                  color: AppTheme.of(context).cardAlt,
                   borderRadius: BorderRadius.circular(20),
-                  border:
-                      Border.all(color: AppTheme.accent.withOpacity(0.4)),
+                  border: Border.all(color: AppTheme.of(context).border),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       '${(_rate * 100).toStringAsFixed(0)}%',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: AppTheme.accent),
+                          color: AppTheme.of(context).textPrimary),
                     ),
                     const SizedBox(width: 4),
-                    const Icon(Icons.edit_outlined,
-                        size: 12, color: AppTheme.accent),
+                    Icon(Icons.edit_outlined,
+                        size: 12, color: AppTheme.of(context).textSecondary),
                   ],
                 ),
               ),
@@ -3110,7 +3109,7 @@ class _TaxEstimateCardState extends State<_TaxEstimateCard> {
             icon: const Icon(Icons.share_outlined, size: 15),
             label: const Text('Share tax report',
                 style: TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w600)),
+                    fontSize: 13, fontWeight: FontWeight.w600)),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppTheme.accent,
               side: BorderSide(
@@ -3134,13 +3133,7 @@ class _TaxEstimateCardState extends State<_TaxEstimateCard> {
                 );
               } catch (e) {
                 if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Could not generate PDF: $e'),
-                    backgroundColor: const Color(0xFFEF4444),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
+                AppToast.error(context, 'Could not generate PDF: \$e');
               }
             },
           ),
@@ -3149,7 +3142,7 @@ class _TaxEstimateCardState extends State<_TaxEstimateCard> {
         Text(
           '⚠️  Estimates only — consult a tax professional for advice.',
           style: TextStyle(
-              fontSize: 10,
+              fontSize: 11,
               color: AppTheme.of(context).textMuted,
               fontStyle: FontStyle.italic),
         ),
@@ -3177,12 +3170,10 @@ class _TaxMetric extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
         decoration: BoxDecoration(
-          color: highlight
-              ? color.withOpacity(0.10)
-              : AppTheme.of(context).cardAlt,
+          color: AppTheme.of(context).cardAlt,
           borderRadius: BorderRadius.circular(10),
           border: highlight
-              ? Border.all(color: color.withOpacity(0.3))
+              ? Border.all(color: AppTheme.of(context).border)
               : null,
         ),
         child: Column(
@@ -3190,7 +3181,7 @@ class _TaxMetric extends StatelessWidget {
           children: [
             Text(label,
                 style: TextStyle(
-                    fontSize: 9,
+                    fontSize: 11,
                     color: AppTheme.of(context).textMuted,
                     fontWeight: FontWeight.w500)),
             const SizedBox(height: 4),
@@ -3257,7 +3248,7 @@ class _TaxRateSheetState extends State<_TaxRateSheet> {
           Text(
             'Select your income tax bracket or set a custom rate.',
             style: TextStyle(
-                fontSize: 12, color: AppTheme.of(context).textSecondary),
+                fontSize: 13, color: AppTheme.of(context).textSecondary),
           ),
           const SizedBox(height: 20),
 
@@ -3304,7 +3295,7 @@ class _TaxRateSheetState extends State<_TaxRateSheet> {
             children: [
               Text('Custom:',
                   style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       color: AppTheme.of(context).textSecondary)),
               Expanded(
                 child: SliderTheme(
@@ -3329,7 +3320,7 @@ class _TaxRateSheetState extends State<_TaxRateSheet> {
                 child: Text(
                   '${(_rate * 100).toStringAsFixed(0)}%',
                   style: const TextStyle(
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: AppTheme.accent),
                   textAlign: TextAlign.end,
@@ -3357,7 +3348,7 @@ class _TaxRateSheetState extends State<_TaxRateSheet> {
               ),
               child: const Text('Save',
                   style: TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w600)),
+                      fontSize: 16, fontWeight: FontWeight.w600)),
             ),
           ),
         ],
@@ -3380,10 +3371,10 @@ class _SingleStackCta extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppTheme.accent.withOpacity(0.12),
+              color: AppTheme.of(context).cardAlt,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(Icons.add_circle_outline,
+            child: const Icon(Icons.add_circle_outline,
                 color: AppTheme.accent, size: 22),
           ),
           const SizedBox(width: 14),
@@ -3403,7 +3394,7 @@ class _SingleStackCta extends StatelessWidget {
                 Text(
                   'Compare performance across multiple hustles once you have two or more stacks.',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     color: AppTheme.of(context).textSecondary,
                     height: 1.4,
                   ),
@@ -3485,7 +3476,7 @@ class _YoYChart extends StatelessWidget {
                         child: Text(
                           _months[idx],
                           style: TextStyle(
-                            fontSize: 9,
+                            fontSize: 11,
                             color: AppTheme.of(context).textMuted,
                           ),
                         ),
@@ -3510,7 +3501,7 @@ class _YoYChart extends StatelessWidget {
                       toY: thisYear[i],
                       color: thisYear[i] >= 0
                           ? AppTheme.accent
-                          : AppTheme.red,
+                          : AppTheme.expense,
                       width: 5,
                       borderRadius: BorderRadius.circular(2),
                     ),
@@ -3534,10 +3525,10 @@ class _YoYChart extends StatelessWidget {
                         TextSpan(
                           text: formatCurrency(rod.toY, symbol),
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 13,
                             color: rod.toY >= 0
                                 ? AppTheme.green
-                                : AppTheme.red,
+                                : AppTheme.expense,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -3653,7 +3644,7 @@ class _LayoutEditorSheetState extends State<_LayoutEditorSheet> {
                 child: Text(
                   'Reset',
                   style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       color: AppTheme.of(context).textSecondary),
                 ),
               ),
@@ -3692,7 +3683,7 @@ class _LayoutEditorSheetState extends State<_LayoutEditorSheet> {
                         horizontal: 14, vertical: 12),
                     decoration: BoxDecoration(
                       color: AppTheme.of(context).card,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                           color: isHidden
                               ? AppTheme.of(context).border
@@ -3771,12 +3762,14 @@ class _InsightItem {
   final String title;
   final String body;
   final String action;
+  final VoidCallback? onAction;
 
   const _InsightItem({
     required this.priority,
     required this.title,
     required this.body,
     required this.action,
+    this.onAction,
   });
 }
 
@@ -3803,9 +3796,9 @@ class _InsightEngineCard extends StatelessWidget {
 
   String _priorityLabel(_InsightPriority p) {
     switch (p) {
-      case _InsightPriority.warning:     return 'ACTION NEEDED';
-      case _InsightPriority.watch:       return 'WATCH';
-      case _InsightPriority.opportunity: return 'OPPORTUNITY';
+      case _InsightPriority.warning:     return 'Action needed';
+      case _InsightPriority.watch:       return 'Watch';
+      case _InsightPriority.opportunity: return 'Opportunity';
     }
   }
 
@@ -3825,9 +3818,9 @@ class _InsightEngineCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: c.withOpacity(0.06),
+                color: AppTheme.of(context).card,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: c.withOpacity(0.25)),
+                border: Border.all(color: AppTheme.of(context).border),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -3840,16 +3833,17 @@ class _InsightEngineCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 7, vertical: 2),
                         decoration: BoxDecoration(
-                          color: c.withOpacity(0.15),
+                          color: AppTheme.of(context).cardAlt,
                           borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: AppTheme.of(context).border),
                         ),
                         child: Text(
                           _priorityLabel(item.priority),
                           style: TextStyle(
-                              fontSize: 9,
+                              fontSize: 11,
                               fontWeight: FontWeight.w700,
-                              color: c,
-                              letterSpacing: 0.5),
+                              color: AppTheme.of(context).textSecondary,
+),
                         ),
                       ),
                     ],
@@ -3866,25 +3860,28 @@ class _InsightEngineCard extends StatelessWidget {
                   Text(
                     item.body,
                     style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         height: 1.55,
                         color: colors.textSecondary),
                   ),
                   const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Icon(Icons.arrow_forward_ios_rounded, size: 10, color: c),
-                      const SizedBox(width: 5),
-                      Expanded(
-                        child: Text(
-                          item.action,
-                          style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: c),
+                  GestureDetector(
+                    onTap: item.onAction,
+                    child: Row(
+                      children: [
+                        Icon(Icons.arrow_forward_ios_rounded, size: 10, color: c),
+                        const SizedBox(width: 5),
+                        Expanded(
+                          child: Text(
+                            item.action,
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: c),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -3944,7 +3941,6 @@ class _ClientIntelligenceCard extends StatelessWidget {
                   Text(
                     '$concentrationPct%',
                     style: TextStyle(
-                        fontFamily: 'Courier',
                         fontSize: 24,
                         fontWeight: FontWeight.w700,
                         color: riskColor),
@@ -3955,14 +3951,15 @@ class _ClientIntelligenceCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: riskColor.withOpacity(0.12),
+                color: AppTheme.of(context).cardAlt,
                 borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppTheme.of(context).border),
               ),
               child: Text(riskLabel,
                   style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: riskColor)),
+                      color: AppTheme.of(context).textSecondary)),
             ),
           ],
         ),
@@ -3992,21 +3989,21 @@ class _ClientIntelligenceCard extends StatelessWidget {
                       width: 18,
                       height: 18,
                       decoration: BoxDecoration(
-                        color: c.withOpacity(0.15),
+                        color: AppTheme.of(context).cardAlt,
                         borderRadius: BorderRadius.circular(5),
                       ),
                       alignment: Alignment.center,
                       child: Text('$rank',
                           style: TextStyle(
-                              fontSize: 9,
+                              fontSize: 11,
                               fontWeight: FontWeight.w700,
-                              color: c)),
+                              color: AppTheme.of(context).textSecondary)),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(name,
                           style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 13,
                               fontWeight: FontWeight.w500,
                               color: colors.textPrimary),
                           overflow: TextOverflow.ellipsis),
@@ -4089,7 +4086,7 @@ class _HourlyRateCard extends StatelessWidget {
                     Expanded(
                       child: Text(d.name,
                           style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 13,
                               fontWeight: FontWeight.w500,
                               color: colors.textPrimary),
                           overflow: TextOverflow.ellipsis),
@@ -4097,8 +4094,7 @@ class _HourlyRateCard extends StatelessWidget {
                     Text(
                       '$symbol${d.rate.toStringAsFixed(0)}/hr',
                       style: TextStyle(
-                          fontFamily: 'Courier',
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: c),
                     ),
@@ -4106,7 +4102,7 @@ class _HourlyRateCard extends StatelessWidget {
                     Text(
                       '· ${d.hours.toStringAsFixed(0)}h logged',
                       style: TextStyle(
-                          fontSize: 10, color: colors.textMuted),
+                          fontSize: 11, color: colors.textMuted),
                     ),
                   ],
                 ),
@@ -4172,7 +4168,7 @@ class _RateBenchmark extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-              fontSize: 9,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
               color: AppTheme.of(context).textMuted),
         ),
@@ -4189,6 +4185,7 @@ class _GoalVelocityEntry {
   final double earned;
   final double progress;   // 0.0–1.0
   final double paceRatio;  // > 1.0 means ahead of pace
+  final int dayOfMonth;
 
   const _GoalVelocityEntry({
     required this.name,
@@ -4196,6 +4193,7 @@ class _GoalVelocityEntry {
     required this.earned,
     required this.progress,
     required this.paceRatio,
+    required this.dayOfMonth,
   });
 }
 
@@ -4216,7 +4214,14 @@ class _GoalVelocityCard extends StatelessWidget {
         final String paceLabel;
         final IconData paceIcon;
 
-        if (entry.paceRatio >= 1.2) {
+        // Grace period: first 5 days of the month with no income is not "off pace"
+        final isEarlyMonth = entry.dayOfMonth <= 5 && entry.earned == 0;
+
+        if (isEarlyMonth) {
+          c = AppTheme.of(context).textMuted;
+          paceLabel = 'Month starting';
+          paceIcon  = Icons.calendar_today_outlined;
+        } else if (entry.paceRatio >= 1.2) {
           c = AppTheme.green;
           paceLabel = 'Ahead of pace';
           paceIcon  = Icons.rocket_launch_outlined;
@@ -4246,7 +4251,7 @@ class _GoalVelocityCard extends StatelessWidget {
                     children: [
                       Text(entry.name,
                           style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: colors.textPrimary),
                           overflow: TextOverflow.ellipsis),
@@ -4262,19 +4267,20 @@ class _GoalVelocityCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: c.withOpacity(0.12),
+                    color: AppTheme.of(context).cardAlt,
                     borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppTheme.of(context).border),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(paceIcon, size: 11, color: c),
+                      Icon(paceIcon, size: 11, color: AppTheme.of(context).textSecondary),
                       const SizedBox(width: 4),
                       Text(paceLabel,
                           style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 11,
                               fontWeight: FontWeight.w700,
-                              color: c)),
+                              color: AppTheme.of(context).textSecondary)),
                     ],
                   ),
                 ),
@@ -4308,7 +4314,7 @@ class _GoalVelocityCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               '${(entry.progress * 100).round()}% complete · pace ratio ${entry.paceRatio.toStringAsFixed(1)}x',
-              style: TextStyle(fontSize: 10, color: colors.textMuted),
+              style: TextStyle(fontSize: 11, color: colors.textMuted),
             ),
           ],
         );
@@ -4346,11 +4352,11 @@ class _AnomaliesCard extends StatelessWidget {
         Text(
           'Comparing first vs second half of selected period (per-month averages)',
           style: TextStyle(
-              fontSize: 10, color: colors.textMuted, fontStyle: FontStyle.italic),
+              fontSize: 11, color: colors.textMuted, fontStyle: FontStyle.italic),
         ),
         const SizedBox(height: 12),
         ...anomalies.map((a) {
-          final c = a.isIncrease ? AppTheme.red : AppTheme.green;
+          final c = a.isIncrease ? AppTheme.expense : AppTheme.green;
           final icon = a.isIncrease
               ? Icons.arrow_upward_rounded
               : Icons.arrow_downward_rounded;
@@ -4365,10 +4371,10 @@ class _AnomaliesCard extends StatelessWidget {
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: c.withOpacity(0.12),
+                    color: AppTheme.of(context).cardAlt,
                     borderRadius: BorderRadius.circular(9),
                   ),
-                  child: Icon(icon, color: c, size: 16),
+                  child: Icon(icon, color: AppTheme.of(context).textSecondary, size: 16),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -4377,7 +4383,7 @@ class _AnomaliesCard extends StatelessWidget {
                     children: [
                       Text(a.category,
                           style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: colors.textPrimary)),
                       Text(
@@ -4392,15 +4398,16 @@ class _AnomaliesCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: c.withOpacity(0.12),
+                    color: AppTheme.of(context).cardAlt,
                     borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppTheme.of(context).border),
                   ),
                   child: Text(
                     '${a.isIncrease ? '+' : '-'}$changePct%',
                     style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: c),
+                        color: AppTheme.of(context).textSecondary),
                   ),
                 ),
               ],

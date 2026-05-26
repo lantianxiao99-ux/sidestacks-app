@@ -45,17 +45,17 @@ class AppColors extends ThemeExtension<AppColors> {
     textMuted:     Color(0xFF506060), // very dim — timestamps, labels
   );
 
-  // ── Light palette — warm off-white ────────────────────────────────────────
+  // ── Light palette — clean white ───────────────────────────────────────────
   static const light = AppColors(
-    background:    Color(0xFFF0F3F2), // warm off-white base
+    background:    Color(0xFFF2F4F6), // neutral light gray — cards pop against it
     surface:       Color(0xFFFFFFFF),
     card:          Color(0xFFFFFFFF),
-    cardAlt:       Color(0xFFECEFEE),
-    border:        Color(0xFFD4DBD9),
-    borderLight:   Color(0xFFE2E8E6),
-    textPrimary:   Color(0xFF111A18), // rich warm dark
-    textSecondary: Color(0xFF4A6060),
-    textMuted:     Color(0xFF8AA09A),
+    cardAlt:       Color(0xFFF2F4F6),
+    border:        Color(0xFFE4E8EC), // soft, barely visible border
+    borderLight:   Color(0xFFEFF1F3),
+    textPrimary:   Color(0xFF0D1117), // near-black — crisp on white
+    textSecondary: Color(0xFF57606A), // medium gray
+    textMuted:     Color(0xFF8C959F), // light gray
   );
 
   @override
@@ -103,15 +103,14 @@ class AppColors extends ThemeExtension<AppColors> {
 
 class AppTheme {
   // ── Brand / signal colours — identical in light & dark ────────────────────
-  static const Color accent    = Color(0xFF14B8A6); // logo teal
-  // accentDim is intentionally very low opacity so icon boxes read as
-  // "elevated surface" not "coloured blob".
-  static const Color accentDim = Color(0x1214B8A6); // ~7 % teal
-  static const Color green     = Color(0xFF22C55E); // income
-  static const Color greenDim  = Color(0x1222C55E);
-  static const Color red       = Color(0xFFEF4444); // expense
-  static const Color redDim    = Color(0x12EF4444);
-  static const Color amber     = Color(0xFFF59E0B); // warning
+  static const Color accent    = Color(0xFF0D9488); // teal — deeper, more authoritative
+  static const Color accentDim = Color(0x120D9488); // ~7 % teal
+  static const Color green     = Color(0xFF16A34A); // income — richer, less neon
+  static const Color greenDim  = Color(0x1216A34A);
+  static const Color red       = Color(0xFFDC2626); // errors / destructive only
+  static const Color redDim    = Color(0x12DC2626);
+  static const Color amber     = Color(0xFFD97706); // warning
+  static const Color expense   = Color(0xFF64748B); // expense amounts — slate, not alarming
 
   // ── Dark-only static consts (prefer AppTheme.of(context).xxx in widgets) ──
   static const Color background    = Color(0xFF0F1110);
@@ -161,30 +160,30 @@ class AppTheme {
         unselectedItemColor: textMuted,
         type: BottomNavigationBarType.fixed,
         elevation: 0,
-        selectedLabelStyle: TextStyle(
-          fontFamily: 'Sora', fontSize: 9,
-          fontWeight: FontWeight.w600, letterSpacing: 0.8,
+        selectedLabelStyle: const TextStyle(
+          fontFamily: 'Sora', fontSize: 11,
+          fontWeight: FontWeight.w600,
         ),
-        unselectedLabelStyle: TextStyle(
-          fontFamily: 'Sora', fontSize: 9,
-          fontWeight: FontWeight.w600, letterSpacing: 0.8,
+        unselectedLabelStyle: const TextStyle(
+          fontFamily: 'Sora', fontSize: 11,
+          fontWeight: FontWeight.w500,
         ),
       ),
       textTheme: const TextTheme(
         headlineLarge: TextStyle(
-          fontSize: 28, fontWeight: FontWeight.w700,
-          color: textPrimary, letterSpacing: -0.5,
+          fontSize: 24, fontWeight: FontWeight.w700,
+          color: textPrimary, letterSpacing: -0.4,
         ),
         headlineMedium: TextStyle(
-          fontSize: 22, fontWeight: FontWeight.w600,
+          fontSize: 24, fontWeight: FontWeight.w600,
           color: textPrimary, letterSpacing: -0.4,
         ),
         titleLarge: TextStyle(
-          fontSize: 17, fontWeight: FontWeight.w600,
-          color: textPrimary, letterSpacing: -0.3,
+          fontSize: 16, fontWeight: FontWeight.w600,
+          color: textPrimary, letterSpacing: -0.2,
         ),
         titleMedium: TextStyle(
-          fontSize: 14, fontWeight: FontWeight.w600, color: textPrimary,
+          fontSize: 13, fontWeight: FontWeight.w600, color: textPrimary,
         ),
         bodyMedium: TextStyle(
           fontSize: 13, fontWeight: FontWeight.w400, color: textPrimary,
@@ -193,8 +192,8 @@ class AppTheme {
           fontSize: 11, fontWeight: FontWeight.w400, color: textSecondary,
         ),
         labelSmall: TextStyle(
-          fontSize: 9, fontWeight: FontWeight.w600,
-          color: textMuted, letterSpacing: 0.8,
+          fontSize: 11, fontWeight: FontWeight.w600,
+          color: textMuted,
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -228,7 +227,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      scaffoldBackgroundColor: const Color(0xFFF0F3F2),
+      scaffoldBackgroundColor: const Color(0xFFF2F4F6),
       colorScheme: const ColorScheme.light(
         primary: accent,
         secondary: green,
@@ -238,7 +237,7 @@ class AppTheme {
       ),
       fontFamily: 'Sora',
       appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFFF0F3F2),
+        backgroundColor: Color(0xFFF2F4F6),
         elevation: 0,
         scrolledUnderElevation: 1.5,
         shadowColor: Color(0x18000000),
@@ -258,30 +257,30 @@ class AppTheme {
         unselectedItemColor: Color(0xFF8AA09A),
         type: BottomNavigationBarType.fixed,
         elevation: 0,
-        selectedLabelStyle: TextStyle(
-          fontFamily: 'Sora', fontSize: 9,
-          fontWeight: FontWeight.w600, letterSpacing: 0.8,
+        selectedLabelStyle: const TextStyle(
+          fontFamily: 'Sora', fontSize: 11,
+          fontWeight: FontWeight.w600,
         ),
-        unselectedLabelStyle: TextStyle(
-          fontFamily: 'Sora', fontSize: 9,
-          fontWeight: FontWeight.w600, letterSpacing: 0.8,
+        unselectedLabelStyle: const TextStyle(
+          fontFamily: 'Sora', fontSize: 11,
+          fontWeight: FontWeight.w500,
         ),
       ),
       textTheme: const TextTheme(
         headlineLarge: TextStyle(
-          fontSize: 28, fontWeight: FontWeight.w700,
-          color: Color(0xFF111A18), letterSpacing: -0.5,
+          fontSize: 24, fontWeight: FontWeight.w700,
+          color: Color(0xFF111A18), letterSpacing: -0.4,
         ),
         headlineMedium: TextStyle(
-          fontSize: 22, fontWeight: FontWeight.w600,
+          fontSize: 24, fontWeight: FontWeight.w600,
           color: Color(0xFF111A18), letterSpacing: -0.4,
         ),
         titleLarge: TextStyle(
-          fontSize: 17, fontWeight: FontWeight.w600,
-          color: Color(0xFF111A18), letterSpacing: -0.3,
+          fontSize: 16, fontWeight: FontWeight.w600,
+          color: Color(0xFF111A18), letterSpacing: -0.2,
         ),
         titleMedium: TextStyle(
-          fontSize: 14, fontWeight: FontWeight.w600,
+          fontSize: 13, fontWeight: FontWeight.w600,
           color: Color(0xFF111A18),
         ),
         bodyMedium: TextStyle(
@@ -293,8 +292,8 @@ class AppTheme {
           color: Color(0xFF4A6060),
         ),
         labelSmall: TextStyle(
-          fontSize: 9, fontWeight: FontWeight.w600,
-          color: Color(0xFF8AA09A), letterSpacing: 0.8,
+          fontSize: 11, fontWeight: FontWeight.w600,
+          color: Color(0xFF8AA09A),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(

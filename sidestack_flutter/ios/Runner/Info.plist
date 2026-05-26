@@ -29,6 +29,10 @@
 	<string>385054728978-fpco1g3db7boufk7huuupfqiu3jmjf72.apps.googleusercontent.com</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>SideStacks uses Face ID to keep your financial data secure.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>SideStacks uses your photo library so you can attach receipt photos to transactions.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>SideStacks uses your camera so you can photograph receipts and attach them to transactions.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

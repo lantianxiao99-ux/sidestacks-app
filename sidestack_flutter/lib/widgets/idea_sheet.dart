@@ -118,10 +118,7 @@ class _IdeaSheetState extends State<_IdeaSheet> {
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Couldn\'t save your idea right now — try again in a moment.'),
-          backgroundColor: AppTheme.of(context).card,
-        ));
+        AppToast.error(context, 'Couldn\'t save your idea right now. Try again in a moment.');
       }
     }
     if (mounted) setState(() => _saving = false);
@@ -188,7 +185,7 @@ class _IdeaSheetState extends State<_IdeaSheet> {
                   child: Text(
                     'Tap the badge to change status',
                     style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 11,
                         color: AppTheme.of(context).textMuted),
                   ),
                 ),
@@ -395,7 +392,7 @@ class _HustleTypeSelector extends StatelessWidget {
                 Text(
                   t.label,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: isSelected
                         ? AppTheme.accent
@@ -435,7 +432,7 @@ class _PaybackPreview extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: AppTheme.greenDim,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppTheme.green.withOpacity(0.2)),
         ),
         child: Row(
@@ -449,7 +446,7 @@ class _PaybackPreview extends StatelessWidget {
                   Text(
                     '$symbol${annualIncome.toStringAsFixed(0)}/yr potential',
                     style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: AppTheme.green),
                   ),
@@ -480,12 +477,11 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: Text(
-          text.toUpperCase(),
+          text,
           style: TextStyle(
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: AppTheme.of(context).textMuted,
-              letterSpacing: 0.8),
+              color: AppTheme.of(context).textMuted),
         ),
       );
 }
@@ -519,9 +515,9 @@ class _SheetField extends StatelessWidget {
           labelText: label,
           hintText: hint,
           hintStyle: TextStyle(
-              fontSize: 12, color: AppTheme.of(context).textMuted),
+              fontSize: 11, color: AppTheme.of(context).textMuted),
           labelStyle: TextStyle(
-              fontSize: 12,
+              fontSize: 11,
               color: AppTheme.of(context).textSecondary),
           filled: true,
           fillColor: AppTheme.of(context).card,

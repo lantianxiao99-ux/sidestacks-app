@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
@@ -53,6 +54,8 @@ const _kTaxDeductibleExpenses = {
 Future<void> showAddTransactionSheet(
   BuildContext context, {
   String? preselectedStackId,
+  TransactionType? initialType,
+  bool lockType = false,
 }) async {
   await showModalBottomSheet(
     context: context,
@@ -64,8 +67,11 @@ Future<void> showAddTransactionSheet(
       minChildSize: 0.5,
       maxChildSize: 0.95,
       expand: false,
-      builder: (_, scrollController) =>
-          AddTransactionSheet(preselectedStackId: preselectedStackId),
+      builder: (_, scrollController) => AddTransactionSheet(
+        preselectedStackId: preselectedStackId,
+        initialType: initialType,
+        lockType: lockType,
+      ),
     ),
   );
 }
@@ -97,7 +103,10 @@ Future<void> showEditTransactionSheet(
 class AddTransactionSheet extends StatefulWidget {
   final String? preselectedStackId;
   final Transaction? existingTx;
-  const AddTransactionSheet({super.key, this.preselectedStackId, this.existingTx});
+  final TransactionType? initialType;
+  /// When true, the income/expense toggle is hidden and type is fixed.
+  final bool lockType;
+  const AddTransactionSheet({super.key, this.preselectedStackId, this.existingTx, this.initialType, this.lockType = false});
 
   @override
   State<AddTransactionSheet> createState() => _AddTransactionSheetState();
@@ -120,6 +129,9 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
   String? _existingReceiptUrl;
   bool _uploadingReceipt = false;
 
+  // Receipt OCR scanning
+  bool _scanning = false;
+
   // GST (Australian)
   bool _includesGst = false;
 
@@ -135,7 +147,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
   void initState() {
     super.initState();
     final existing = widget.existingTx;
-    _type = existing?.type ?? TransactionType.income;
+    _type = existing?.type ?? widget.initialType ?? TransactionType.income;
     _date = existing?.date ?? DateTime.now();
     _amountController = TextEditingController(
       text: existing != null ? existing.amount.toStringAsFixed(2) : '',
@@ -185,7 +197,73 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
   List<String> get _categories =>
       _isIncome ? _incomeCategories : _expenseCategories;
 
+  // ── Receipt OCR ──────────────────────────────────────────────────────────────
+
+  Future<void> _scanReceipt() async {
+    HapticFeedback.lightImpact();
+    final picker = ImagePicker();
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        decoration: BoxDecoration(
+          color: AppTheme.of(context).surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppTheme.of(context).border),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: Container(
+                width: 36, height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                    color: AppTheme.of(context).border,
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const Text('Attach receipt',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Text('Photo will be saved with this transaction.',
+                style: TextStyle(fontSize: 13, color: AppTheme.of(context).textSecondary)),
+            const SizedBox(height: 20),
+            _ReceiptSourceButton(
+              icon: Icons.camera_alt_outlined,
+              label: 'Take a photo',
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            const SizedBox(height: 10),
+            _ReceiptSourceButton(
+              icon: Icons.photo_library_outlined,
+              label: 'Choose from library',
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null) return;
+
+    setState(() => _scanning = true);
+    try {
+      final XFile? file = await picker.pickImage(source: source, imageQuality: 80);
+      if (file == null) return;
+      setState(() => _receiptFile = File(file.path));
+      if (mounted) AppToast.show(context, 'Receipt attached. Fill in the amount manually.');
+    } catch (e) {
+      if (mounted) AppToast.error(context, 'Could not attach receipt.');
+    } finally {
+      if (mounted) setState(() => _scanning = false);
+    }
+  }
+
   void _setType(TransactionType t) {
+    HapticFeedback.selectionClick();
     setState(() {
       _type = t;
       if (!_isEditing) {
@@ -328,8 +406,9 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
         pregenId: newTxId,
         includesGst: _includesGst,
       );
-      // Show confirmation overlay before dismissing the sheet
+      // Haptic + confirmation overlay before dismissing the sheet
       if (mounted) {
+        HapticFeedback.lightImpact();
         await showTransactionConfirmation(
           context,
           isIncome: _isIncome,
@@ -345,7 +424,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
   Widget build(BuildContext context) {
     final stacks = context.watch<AppProvider>().stacks;
     final symbol = context.watch<AppProvider>().currencySymbol;
-    final actionColor = _isIncome ? AppTheme.green : AppTheme.red;
+    final actionColor = _isIncome ? AppTheme.green : AppTheme.expense;
     final padding = MediaQuery.of(context).viewInsets.bottom;
     final hasReceipt = _receiptFile != null || _existingReceiptUrl != null;
 
@@ -374,40 +453,50 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
               ),
             ),
 
-            Text(
-              _isEditing ? 'Edit Transaction' : 'Quick Add',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
+            Builder(builder: (context) {
+              final stacks = context.read<AppProvider>().stacks;
+              final stack = _stackId != null
+                  ? stacks.firstWhere((s) => s.id == _stackId,
+                      orElse: () => stacks.first)
+                  : null;
+              final isSavings = stack?.stackType == StackType.savings;
+              String title = _isEditing ? 'Edit Transaction' : 'Quick Add';
+              if (!_isEditing && isSavings) title = 'Add Deposit';
+              return Text(title,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600));
+            }),
             const SizedBox(height: 16),
 
-            // Income / Expense toggle
-            Container(
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                color: AppTheme.of(context).card,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.of(context).border),
+            // Income / Expense toggle — hidden when type is locked
+            if (!widget.lockType) ...[
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color: AppTheme.of(context).card,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppTheme.of(context).border),
+                ),
+                child: Row(
+                  children: [
+                    _TypeToggle(
+                      label: 'Income',
+                      active: _isIncome,
+                      activeColor: AppTheme.green,
+                      textColor: Colors.white,
+                      onTap: () => _setType(TransactionType.income),
+                    ),
+                    _TypeToggle(
+                      label: 'Expense',
+                      active: !_isIncome,
+                      activeColor: AppTheme.expense,
+                      textColor: Colors.white,
+                      onTap: () => _setType(TransactionType.expense),
+                    ),
+                  ],
+                ),
               ),
-              child: Row(
-                children: [
-                  _TypeToggle(
-                    label: 'Income',
-                    active: _isIncome,
-                    activeColor: AppTheme.green,
-                    textColor: Colors.black,
-                    onTap: () => _setType(TransactionType.income),
-                  ),
-                  _TypeToggle(
-                    label: 'Expense',
-                    active: !_isIncome,
-                    activeColor: AppTheme.red,
-                    textColor: Colors.white,
-                    onTap: () => _setType(TransactionType.expense),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
+              const SizedBox(height: 14),
+            ],
 
             // Stack selector
             if (!_isEditing && stacks.length > 1) ...[
@@ -416,7 +505,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 decoration: BoxDecoration(
                   color: AppTheme.of(context).card,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: AppTheme.of(context).border),
                 ),
                 child: DropdownButtonHideUnderline(
@@ -439,24 +528,56 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
             ],
 
             // Amount
-            _FieldLabel('Amount'),
+            Row(
+              children: [
+                _FieldLabel('Amount'),
+                const Spacer(),
+                if (_scanning)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 6),
+                    child: SizedBox(
+                      width: 14, height: 14,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: AppTheme.accent),
+                    ),
+                  )
+                else
+                  GestureDetector(
+                    onTap: _scanReceipt,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.document_scanner_outlined,
+                            size: 14, color: AppTheme.accent),
+                        const SizedBox(width: 4),
+                        Text('Scan receipt',
+                            style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.accent)),
+                      ]),
+                    ),
+                  ),
+              ],
+            ),
             TextField(
               controller: _amountController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               style: TextStyle(
-                fontFamily: 'Courier', fontSize: 24,
+                fontSize: 24,
                 fontWeight: FontWeight.w600,
                 color: AppTheme.of(context).textPrimary,
               ),
               decoration: InputDecoration(
                 prefixText: '$symbol  ',
                 prefixStyle: TextStyle(
-                  fontFamily: 'Courier', fontSize: 24,
+                  fontSize: 24,
                   fontWeight: FontWeight.w400,
                   color: AppTheme.of(context).textMuted,
                 ),
                 hintText: '0.00',
               ),
+              inputFormatters: [LengthLimitingTextInputFormatter(12)],
               autofocus: !_isEditing,
               onChanged: (_) => setState(() {}),
             ),
@@ -471,7 +592,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
                   color: AppTheme.of(context).card,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: AppTheme.of(context).border),
                 ),
                 child: Row(
@@ -507,6 +628,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
                   selected: isSelected,
                   isDeductible: isDeductible,
                   onTap: () {
+                    HapticFeedback.selectionClick();
                     setState(() {
                       if (isOtherChip) {
                         _isCustomCategory = true;
@@ -556,6 +678,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
                   prefixIcon: Icon(Icons.edit_outlined,
                       size: 16, color: AppTheme.of(context).textMuted),
                 ),
+                inputFormatters: [LengthLimitingTextInputFormatter(50)],
                 onChanged: (_) => setState(() {}),
               ),
             ],
@@ -600,6 +723,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
                           color: AppTheme.of(context).textPrimary),
                       decoration: const InputDecoration(
                           hintText: 'e.g. Acme Corp'),
+                      inputFormatters: [LengthLimitingTextInputFormatter(100)],
                     );
                   },
                   optionsViewBuilder: (ctx, onSelected, options) {
@@ -649,9 +773,10 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
                   hintText: '0.0',
                   suffixText: 'hrs',
                   suffixStyle: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       color: AppTheme.of(context).textMuted),
                 ),
+                inputFormatters: [LengthLimitingTextInputFormatter(6)],
               ),
               const SizedBox(height: 14),
             ],
@@ -662,6 +787,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
               style: TextStyle(
                   fontSize: 13, color: AppTheme.of(context).textPrimary),
               decoration: const InputDecoration(hintText: 'Notes (optional)'),
+              inputFormatters: [LengthLimitingTextInputFormatter(500)],
             ),
             const SizedBox(height: 14),
 
@@ -675,7 +801,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
                   color: hasReceipt
                       ? AppTheme.accent.withOpacity(0.08)
                       : AppTheme.of(context).card,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: hasReceipt
                         ? AppTheme.accent
@@ -742,7 +868,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
                   color: _isRecurring
                       ? AppTheme.accentDim
                       : AppTheme.of(context).card,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: _isRecurring
                         ? AppTheme.accent
@@ -786,7 +912,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
                         child: Text(
                           _recurrenceInterval?.label ?? 'Monthly',
                           style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 11,
                               fontWeight: FontWeight.w700,
                               color: Colors.white),
                         ),
@@ -812,7 +938,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
                     color: _includesGst
                         ? const Color(0xFF0F766E).withOpacity(0.10)
                         : AppTheme.of(context).card,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: _includesGst
                           ? const Color(0xFF0F766E)
@@ -849,7 +975,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
                               return Text(
                                 'GST: $sym${gst.toStringAsFixed(2)}  ·  Ex-GST: $sym${(amt - gst).toStringAsFixed(2)}',
                                 style: const TextStyle(
-                                    fontSize: 10,
+                                    fontSize: 11,
                                     color: Color(0xFF0F766E)),
                               );
                             }),
@@ -873,17 +999,17 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
 
             // Submit
             _uploadingReceipt
-                ? const Center(
+                ? Center(
                     child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    child: CircularProgressIndicator(),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: CircularProgressIndicator(color: AppTheme.accent),
                   ))
                 : PrimaryButton(
                     label: _isEditing
                         ? 'Save Changes'
                         : (_isIncome ? 'Add Income' : 'Add Expense'),
                     color: actionColor,
-                    textColor: _isIncome ? Colors.black : Colors.white,
+                    textColor: Colors.white,
                     onPressed:
                         _amountController.text.isEmpty ? null : _submit,
                   ),
@@ -943,10 +1069,10 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(bottom: 6),
         child: Text(
-          text.toUpperCase(),
+          text,
           style: TextStyle(
-            fontSize: 9, fontWeight: FontWeight.w600,
-            color: AppTheme.of(context).textMuted, letterSpacing: 0.8,
+            fontSize: 11, fontWeight: FontWeight.w500,
+            color: AppTheme.of(context).textMuted,
           ),
         ),
       );
@@ -993,9 +1119,9 @@ class _TaxCategoryChip extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight:
-                    selected ? FontWeight.w600 : FontWeight.w400,
+                    selected ? FontWeight.w600 : FontWeight.w500,
                 color: textColor,
               ),
             ),
@@ -1010,13 +1136,54 @@ class _TaxCategoryChip extends StatelessWidget {
                   Text(
                     'Tax deductible',
                     style: TextStyle(
-                        fontSize: 9,
+                        fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: AppTheme.green),
                   ),
                 ],
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Receipt source picker button ────────────────────────────────────────────
+
+class _ReceiptSourceButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _ReceiptSourceButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = AppTheme.of(context).card;
+    final border = AppTheme.of(context).border;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: border),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: AppTheme.accent),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+            ),
           ],
         ),
       ),

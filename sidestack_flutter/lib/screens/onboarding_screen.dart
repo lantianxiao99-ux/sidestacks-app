@@ -155,7 +155,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   Text(
                     '${_page + 1} of $_totalPages',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       color: AppTheme.of(context).textMuted,
                       fontWeight: FontWeight.w500,
                     ),
@@ -270,7 +270,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                       : 'Continue →')
                                   : 'Continue',
                           style: const TextStyle(
-                            fontSize: 15,
+                            fontSize: 16,
                             fontWeight: FontWeight.w600,
                             color: Colors.white,
                           ),
@@ -326,10 +326,10 @@ class _SlideView extends StatelessWidget {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: slide.accent.withOpacity(0.12),
+                    color: AppTheme.of(context).cardAlt,
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(
-                        color: slide.accent.withOpacity(0.35), width: 1.5),
+                        color: AppTheme.of(context).border, width: 1.5),
                   ),
                   child: Center(
                     child: Icon(
@@ -348,7 +348,7 @@ class _SlideView extends StatelessWidget {
           Text(
             slide.title,
             style: TextStyle(
-              fontSize: 30,
+              fontSize: 24,
               fontWeight: FontWeight.w800,
               color: AppTheme.of(context).textPrimary,
               letterSpacing: -0.7,
@@ -361,7 +361,7 @@ class _SlideView extends StatelessWidget {
           Text(
             slide.subtitle,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 13,
               color: AppTheme.of(context).textSecondary,
               height: 1.55,
             ),
@@ -379,12 +379,12 @@ class _SlideView extends StatelessWidget {
                       width: 16,
                       height: 16,
                       decoration: BoxDecoration(
-                        color: slide.accent.withOpacity(0.15),
+                        color: AppTheme.of(context).cardAlt,
                         shape: BoxShape.circle,
                       ),
                       child: Center(
                         child: Icon(Icons.check,
-                            size: 10, color: slide.accent),
+                            size: 10, color: AppTheme.accent),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -452,7 +452,7 @@ class _WelcomePreview extends StatelessWidget {
           Row(children: [
             _MiniMetric(label: 'Income', value: '\$4,200', color: AppTheme.green),
             const SizedBox(width: 8),
-            _MiniMetric(label: 'Expenses', value: '\$980', color: AppTheme.red),
+            _MiniMetric(label: 'Expenses', value: '\$980', color: AppTheme.expense),
             const SizedBox(width: 8),
             _MiniMetric(label: 'Profit', value: '\$3,220', color: AppTheme.accent),
           ]),
@@ -472,7 +472,7 @@ class _TransactionPreview extends StatelessWidget {
       child: Column(children: [
         _MockTx(label: 'Client payment', amount: '+\$850', color: AppTheme.green),
         Divider(height: 16, color: AppTheme.of(context).border),
-        _MockTx(label: 'Adobe CC', amount: '-\$55', color: AppTheme.red),
+        _MockTx(label: 'Adobe CC', amount: '-\$55', color: AppTheme.expense),
         Divider(height: 16, color: AppTheme.of(context).border),
         _MockTx(label: 'Etsy sale', amount: '+\$120', color: AppTheme.green),
       ]),
@@ -517,7 +517,7 @@ class _AnalyticsPreview extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(_months[i],
                       style: TextStyle(
-                          fontSize: 9,
+                          fontSize: 11,
                           color: AppTheme.of(context).textMuted)),
                 ],
               );
@@ -552,7 +552,7 @@ class _MiniMetric extends StatelessWidget {
           children: [
             Text(label,
                 style: TextStyle(
-                    fontSize: 9,
+                    fontSize: 11,
                     color: AppTheme.of(context).textMuted,
                     fontWeight: FontWeight.w500)),
             const SizedBox(height: 3),
@@ -582,7 +582,7 @@ class _MockTx extends StatelessWidget {
         width: 28,
         height: 28,
         decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
+          color: AppTheme.of(context).cardAlt,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(
@@ -596,7 +596,7 @@ class _MockTx extends StatelessWidget {
       Expanded(
         child: Text(label,
             style: TextStyle(
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.w500,
                 color: AppTheme.of(context).textPrimary)),
       ),
@@ -641,10 +641,10 @@ class _HustleTypeSlide extends StatelessWidget {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: AppTheme.accent.withOpacity(0.12),
+                color: AppTheme.of(context).cardAlt,
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                    color: AppTheme.accent.withOpacity(0.35), width: 1.5),
+                    color: AppTheme.of(context).border, width: 1.5),
               ),
               child: const Center(
                   child: Icon(Icons.track_changes_outlined, size: 40, color: AppTheme.accent)),
@@ -654,7 +654,7 @@ class _HustleTypeSlide extends StatelessWidget {
           Text(
             'What kind of\nhustle are you running?',
             style: TextStyle(
-                fontSize: 26,
+                fontSize: 24,
                 fontWeight: FontWeight.w800,
                 color: theme.textPrimary,
                 height: 1.2,
@@ -664,7 +664,7 @@ class _HustleTypeSlide extends StatelessWidget {
           Text(
             'We\'ll tailor your first SideStack to match.',
             style: TextStyle(
-                fontSize: 14,
+                fontSize: 13,
                 color: theme.textSecondary,
                 height: 1.5),
           ),
@@ -679,9 +679,7 @@ class _HustleTypeSlide extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: active
-                      ? AppTheme.accent.withOpacity(0.12)
-                      : theme.card,
+                  color: theme.card,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: active
@@ -702,7 +700,7 @@ class _HustleTypeSlide extends StatelessWidget {
                           Text(
                             t.label,
                             style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 13,
                                 fontWeight: active
                                     ? FontWeight.w700
                                     : FontWeight.w600,
@@ -759,20 +757,20 @@ class _MonthlyGoalSlide extends StatelessWidget {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: AppTheme.green.withOpacity(0.12),
+                color: AppTheme.of(context).cardAlt,
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                    color: AppTheme.green.withOpacity(0.35), width: 1.5),
+                    color: AppTheme.of(context).border, width: 1.5),
               ),
               child: const Center(
-                  child: Icon(Icons.savings_outlined, size: 40, color: AppTheme.green)),
+                  child: Icon(Icons.savings_outlined, size: 40, color: AppTheme.accent)),
             ),
           ),
           const SizedBox(height: 24),
           Text(
             'What\'s your\nmonthly target?',
             style: TextStyle(
-                fontSize: 26,
+                fontSize: 24,
                 fontWeight: FontWeight.w800,
                 color: theme.textPrimary,
                 height: 1.2,
@@ -782,7 +780,7 @@ class _MonthlyGoalSlide extends StatelessWidget {
           Text(
             'We\'ll track your $typeLabel income against this goal each month.',
             style: TextStyle(
-                fontSize: 14,
+                fontSize: 13,
                 color: theme.textSecondary,
                 height: 1.5),
           ),
@@ -796,7 +794,7 @@ class _MonthlyGoalSlide extends StatelessWidget {
                   RegExp(r'^\d+\.?\d{0,2}')),
             ],
             style: TextStyle(
-                fontSize: 28,
+                fontSize: 24,
                 fontWeight: FontWeight.w700,
                 color: theme.textPrimary,
                 letterSpacing: -0.5),
@@ -804,7 +802,7 @@ class _MonthlyGoalSlide extends StatelessWidget {
               prefixText: '  ',
               hintText: '0',
               hintStyle: TextStyle(
-                  fontSize: 28,
+                  fontSize: 24,
                   fontWeight: FontWeight.w300,
                   color: theme.textMuted),
               filled: true,
@@ -827,7 +825,7 @@ class _MonthlyGoalSlide extends StatelessWidget {
                   horizontal: 20, vertical: 18),
               suffixText: '/month',
               suffixStyle: TextStyle(
-                  fontSize: 14,
+                  fontSize: 13,
                   color: theme.textMuted,
                   fontWeight: FontWeight.w400),
             ),
@@ -837,20 +835,19 @@ class _MonthlyGoalSlide extends StatelessWidget {
             padding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: AppTheme.green.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: AppTheme.green.withOpacity(0.2)),
+              color: AppTheme.of(context).cardAlt,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppTheme.of(context).border),
             ),
             child: Row(
               children: [
-                const Icon(Icons.lightbulb_outline, size: 16, color: AppTheme.green),
+                Icon(Icons.lightbulb_outline, size: 16, color: AppTheme.of(context).textSecondary),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'You can always update or remove this goal later in your stack settings.',
                     style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         color: theme.textSecondary,
                         height: 1.4),
                   ),

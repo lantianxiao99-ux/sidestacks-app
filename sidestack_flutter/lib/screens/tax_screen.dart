@@ -90,11 +90,7 @@ class _TaxScreenState extends State<TaxScreen> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-          content: Text('Could not generate summary: $e'),
-          backgroundColor: AppTheme.red,
-          behavior: SnackBarBehavior.floating,
-        ));
+        AppToast.error(ctx, 'Could not generate summary: \$e');
       }
     } finally {
       if (mounted) setState(() => _generating = false);
@@ -202,7 +198,7 @@ class _TaxScreenState extends State<TaxScreen> {
             title: Text(
               'Estimates',
               style: TextStyle(
-                  fontSize: 22,
+                  fontSize: 24,
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.4,
                   color: AppTheme.of(context).textPrimary),
@@ -231,7 +227,7 @@ class _TaxScreenState extends State<TaxScreen> {
             // ── Year summary band ─────────────────────────────────────────
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
                 child: _YearSummaryBand(
                   income: income, expenses: expenses, profit: profit, sym: sym),
               ),
@@ -240,7 +236,7 @@ class _TaxScreenState extends State<TaxScreen> {
             // ── Estimated tax card ─────────────────────────────────────────
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
                 child: _EstimatedTaxCard(
                   taxableProfit: taxableProfit,
                   estimatedTax: estimatedTax,
@@ -254,7 +250,7 @@ class _TaxScreenState extends State<TaxScreen> {
             // ── Deductible expenses ────────────────────────────────────────
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
                 child: _DeductibleExpensesCard(
                   deductible: deductible,
                   totalDeductible: totalDeductible,
@@ -267,7 +263,7 @@ class _TaxScreenState extends State<TaxScreen> {
             // ── Mileage deduction ──────────────────────────────────────────
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
                 child: _MileageDeductionCard(
                   tripCount: mileTrips.length,
                   km: mileageKm,
@@ -287,7 +283,7 @@ class _TaxScreenState extends State<TaxScreen> {
             if (isAU)
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
                   child: _BasSummaryCard(
                     gstCollected: gstCollected,
                     gstCredits: gstCredits,
@@ -303,7 +299,7 @@ class _TaxScreenState extends State<TaxScreen> {
             if (outstanding.isNotEmpty)
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
                   child: _OutstandingInvoicesCard(
                       invoices: outstanding, sym: sym),
                 ),
@@ -313,7 +309,7 @@ class _TaxScreenState extends State<TaxScreen> {
             if (estimatedTax > 0)
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
                   child: _SetAsideTip(
                       estimatedTax: estimatedTax,
                       taxRate: provider.taxRate,
@@ -324,7 +320,7 @@ class _TaxScreenState extends State<TaxScreen> {
             // ── Estimate settings (tax rate, mileage rate) ────────────────
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
                 child: _TaxSettingsCard(isAU: isAU),
               ),
             ),
@@ -332,7 +328,7 @@ class _TaxScreenState extends State<TaxScreen> {
             // ── Generate Summary ──────────────────────────────────────────
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
                 child: _GenerateSummaryCard(
                   generating: _generating,
                   yearLabel: _resolvedYearLabel(isAU),
@@ -344,7 +340,7 @@ class _TaxScreenState extends State<TaxScreen> {
               ),
             ),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
           ],
         ],
       ),
@@ -388,7 +384,7 @@ class _TaxYearPicker extends StatelessWidget {
             child: Text(
               label,
               style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.of(context).textPrimary),
             ),
@@ -450,14 +446,14 @@ class _YearSummaryBand extends StatelessWidget {
               label: 'Expenses',
               value: expenses,
               sym: sym,
-              color: AppTheme.red)),
+              color: AppTheme.expense)),
       const SizedBox(width: 8),
       Expanded(
           child: _SummaryPill(
               label: 'Profit',
               value: profit,
               sym: sym,
-              color: profit >= 0 ? AppTheme.green : AppTheme.red)),
+              color: profit >= 0 ? AppTheme.green : AppTheme.expense)),
     ]);
   }
 }
@@ -477,25 +473,23 @@ class _SummaryPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: AppTheme.of(context).card,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: AppTheme.of(context).border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
               style: TextStyle(
-                  fontSize: 9,
+                  fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
-                  color: color.withOpacity(0.7))),
+                  color: AppTheme.of(context).textMuted)),
           const SizedBox(height: 3),
           Text(
             formatCurrency(value.abs(), sym),
             style: TextStyle(
-                fontFamily: 'Courier',
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: color),
           ),
@@ -536,26 +530,24 @@ class _EstimatedTaxCard extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                  color: AppTheme.amber.withOpacity(0.12),
+                  color: AppTheme.of(context).cardAlt,
                   borderRadius: BorderRadius.circular(10)),
-              child: const Center(
-                  child: Icon(Icons.receipt_long_outlined, size: 17, color: AppTheme.amber)),
+              child: Center(
+                  child: Icon(Icons.receipt_long_outlined, size: 17, color: AppTheme.of(context).textSecondary)),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('ESTIMATED TAX',
+                  Text('Estimated tax',
                       style: TextStyle(
-                          fontSize: 9,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          letterSpacing: 0.8,
                           color: AppTheme.of(context).textMuted)),
                   Text(
                     formatCurrency(estimatedTax, sym),
                     style: TextStyle(
-                        fontFamily: 'Courier',
                         fontSize: 24,
                         fontWeight: FontWeight.w700,
                         color: estimatedTax > 0
@@ -569,15 +561,16 @@ class _EstimatedTaxCard extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: AppTheme.amber.withOpacity(0.12),
+                color: AppTheme.of(context).cardAlt,
                 borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppTheme.of(context).border),
               ),
               child: Text(
                 '$pct% rate',
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: AppTheme.amber),
+                    color: AppTheme.of(context).textSecondary),
               ),
             ),
           ]),
@@ -612,7 +605,7 @@ class _EstimatedTaxCard extends StatelessWidget {
                   ? 'No tax estimated — profit is zero or below for this tax year.'
                   : 'Log income to see your estimated tax liability.',
               style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   color: AppTheme.of(context).textSecondary,
                   height: 1.5),
             ),
@@ -636,14 +629,12 @@ class _TaxMetric extends StatelessWidget {
       children: [
         Text(label,
             style: TextStyle(
-                fontSize: 9,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
-                letterSpacing: 0.4,
                 color: AppTheme.of(context).textMuted)),
         const SizedBox(height: 2),
         Text(value,
             style: TextStyle(
-                fontFamily: 'Courier',
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: color)),
@@ -702,28 +693,26 @@ class _DeductibleExpensesCardState extends State<_DeductibleExpensesCard> {
               Container(
                 width: 36, height: 36,
                 decoration: BoxDecoration(
-                    color: AppTheme.green.withOpacity(0.1),
+                    color: AppTheme.of(context).cardAlt,
                     borderRadius: BorderRadius.circular(10)),
-                child: const Center(
-                    child: Icon(Icons.receipt_long_outlined, size: 17, color: AppTheme.green)),
+                child: Center(
+                    child: Icon(Icons.receipt_long_outlined, size: 17, color: AppTheme.of(context).textSecondary)),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('DEDUCTIBLE EXPENSES',
+                    Text('Deductible expenses',
                         style: TextStyle(
-                            fontSize: 9,
+                            fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            letterSpacing: 0.8,
                             color: AppTheme.of(context).textMuted)),
                     Row(children: [
                       Text(
                         formatCurrency(widget.totalDeductible, widget.sym),
                         style: const TextStyle(
-                            fontFamily: 'Courier',
-                            fontSize: 18,
+                            fontSize: 16,
                             fontWeight: FontWeight.w700,
                             color: AppTheme.green),
                       ),
@@ -733,15 +722,16 @@ class _DeductibleExpensesCardState extends State<_DeductibleExpensesCard> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AppTheme.green.withOpacity(0.12),
+                            color: AppTheme.of(context).cardAlt,
                             borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppTheme.of(context).border),
                           ),
                           child: Text(
                             'saves ${formatCurrency(widget.totalDeductible * widget.taxRate, widget.sym)}',
-                            style: const TextStyle(
-                                fontSize: 9,
+                            style: TextStyle(
+                                fontSize: 11,
                                 fontWeight: FontWeight.w700,
-                                color: AppTheme.green),
+                                color: AppTheme.of(context).textSecondary),
                           ),
                         ),
                     ]),
@@ -767,7 +757,7 @@ class _DeductibleExpensesCardState extends State<_DeductibleExpensesCard> {
                   child: Text(
                     'No deductible expenses logged for this tax year.\nCategories like Software, Travel, and Home Office qualify.',
                     style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         color: AppTheme.of(context).textSecondary,
                         height: 1.5),
                   ),
@@ -779,14 +769,13 @@ class _DeductibleExpensesCardState extends State<_DeductibleExpensesCard> {
                         Expanded(
                           child: Text(e.key,
                               style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 13,
                                   color: AppTheme.of(context).textPrimary)),
                         ),
                         Text(
                           formatCurrency(e.value, widget.sym),
                           style: const TextStyle(
-                              fontFamily: 'Courier',
-                              fontSize: 12,
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: AppTheme.green),
                         ),
@@ -795,15 +784,15 @@ class _DeductibleExpensesCardState extends State<_DeductibleExpensesCard> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 5, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AppTheme.green.withOpacity(0.1),
+                            color: AppTheme.of(context).cardAlt,
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             '-${formatCurrency(e.value * widget.taxRate, widget.sym)} tax',
-                            style: const TextStyle(
-                                fontSize: 9,
+                            style: TextStyle(
+                                fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: AppTheme.green),
+                                color: AppTheme.of(context).textMuted),
                           ),
                         ),
                       ]),
@@ -840,7 +829,6 @@ class _MileageDeductionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const purple = Color(0xFF8B5CF6);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -856,30 +844,28 @@ class _MileageDeductionCard extends StatelessWidget {
             Container(
               width: 36, height: 36,
               decoration: BoxDecoration(
-                  color: purple.withOpacity(0.12),
+                  color: AppTheme.of(context).cardAlt,
                   borderRadius: BorderRadius.circular(10)),
-              child: const Center(
-                  child: Icon(Icons.directions_car_outlined, size: 17, color: purple)),
+              child: Center(
+                  child: Icon(Icons.directions_car_outlined, size: 17, color: AppTheme.of(context).textSecondary)),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('MILEAGE DEDUCTION',
+                  Text('Mileage deduction',
                       style: TextStyle(
-                          fontSize: 9,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          letterSpacing: 0.8,
                           color: AppTheme.of(context).textMuted)),
                   Row(children: [
                     Text(
                       formatCurrency(deduction, sym),
-                      style: const TextStyle(
-                          fontFamily: 'Courier',
-                          fontSize: 18,
+                      style: TextStyle(
+                          fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: purple),
+                          color: AppTheme.of(context).textPrimary),
                     ),
                     const SizedBox(width: 8),
                     if (deduction > 0)
@@ -887,15 +873,16 @@ class _MileageDeductionCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: purple.withOpacity(0.12),
+                          color: AppTheme.of(context).cardAlt,
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppTheme.of(context).border),
                         ),
                         child: Text(
                           'saves ${formatCurrency(deduction * taxRate, sym)}',
-                          style: const TextStyle(
-                              fontSize: 9,
+                          style: TextStyle(
+                              fontSize: 11,
                               fontWeight: FontWeight.w700,
-                              color: purple),
+                              color: AppTheme.of(context).textSecondary),
                         ),
                       ),
                   ]),
@@ -907,7 +894,7 @@ class _MileageDeductionCard extends StatelessWidget {
               icon: const Icon(Icons.add, size: 14),
               label: const Text('Log trip'),
               style: TextButton.styleFrom(
-                foregroundColor: purple,
+                foregroundColor: AppTheme.accent,
                 padding: const EdgeInsets.symmetric(
                     horizontal: 10, vertical: 6),
                 textStyle: const TextStyle(
@@ -926,13 +913,13 @@ class _MileageDeductionCard extends StatelessWidget {
                   child: _MileagePill(
                       label: 'Trips',
                       value: '$tripCount',
-                      color: purple)),
+                      color: AppTheme.of(context).textSecondary)),
               const SizedBox(width: 8),
               Expanded(
                   child: _MileagePill(
                       label: isAuMode ? 'km logged' : 'dist logged',
                       value: km.toStringAsFixed(1),
-                      color: purple)),
+                      color: AppTheme.of(context).textSecondary)),
               const SizedBox(width: 8),
               if (isAuMode) ...[
                 Expanded(
@@ -940,7 +927,7 @@ class _MileageDeductionCard extends StatelessWidget {
                         label: 'km claimed',
                         value: '${cappedKm.toStringAsFixed(0)}/5000',
                         color: cappedKm >= 5000
-                            ? const Color(0xFFEF4444)
+                            ? AppTheme.red
                             : AppTheme.of(context).textMuted)),
                 const SizedBox(width: 8),
               ],
@@ -957,7 +944,7 @@ class _MileageDeductionCard extends StatelessWidget {
                   ? 'Log business trips to claim the ATO \$0.85/km deduction (capped at 5,000 km/year) and reduce your tax bill.'
                   : 'Log business trips to claim a mileage deduction at your configured rate and reduce your tax bill.',
               style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   color: AppTheme.of(context).textSecondary,
                   height: 1.5),
             ),
@@ -979,7 +966,7 @@ class _MileagePill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: AppTheme.of(context).cardAlt,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
@@ -987,16 +974,15 @@ class _MileagePill extends StatelessWidget {
         children: [
           Text(label,
               style: TextStyle(
-                  fontSize: 9,
+                  fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: color.withOpacity(0.7))),
+                  color: AppTheme.of(context).textMuted)),
           const SizedBox(height: 2),
           Text(value,
               style: TextStyle(
-                  fontFamily: 'Courier',
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: color)),
+                  color: AppTheme.of(context).textPrimary)),
         ],
       ),
     );
@@ -1043,30 +1029,28 @@ class _BasSummaryCard extends StatelessWidget {
             Container(
               width: 36, height: 36,
               decoration: BoxDecoration(
-                color: teal.withOpacity(0.12),
+                color: AppTheme.of(context).cardAlt,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Center(
-                  child: Text('🇦🇺', style: TextStyle(fontSize: 17))),
+                  child: Text('🇦🇺', style: TextStyle(fontSize: 16))),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('GST / BAS SUMMARY',
+                  Text('GST / BAS',
                       style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.8,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
                           color: AppTheme.of(context).textMuted)),
                   Text(
                     hasData
                         ? '${sym}${gstPayable.abs().toStringAsFixed(2)} ${gstPayable >= 0 ? 'to pay' : 'refund'}'
                         : 'No GST transactions yet',
                     style: TextStyle(
-                        fontFamily: 'Courier',
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: hasData
                             ? (gstPayable >= 0 ? teal : AppTheme.green)
@@ -1083,8 +1067,7 @@ class _BasSummaryCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                color: (overThreshold ? AppTheme.red : const Color(0xFFF59E0B))
-                    .withOpacity(0.10),
+                color: AppTheme.of(context).card,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                     color: overThreshold
@@ -1144,7 +1127,7 @@ class _BasSummaryCard extends StatelessWidget {
             Text(
               'Mark transactions as "Includes GST" when adding them to track your BAS obligations here.',
               style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   color: AppTheme.of(context).textSecondary,
                   height: 1.5),
             ),
@@ -1169,12 +1152,12 @@ class _OutstandingInvoicesCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: AppTheme.amber.withOpacity(0.08),
+        color: AppTheme.of(context).card,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.amber.withOpacity(0.25)),
+        border: Border.all(color: AppTheme.of(context).border),
       ),
       child: Row(children: [
-        const Icon(Icons.mark_email_unread_outlined, size: 18, color: AppTheme.amber),
+        Icon(Icons.mark_email_unread_outlined, size: 18, color: AppTheme.of(context).textSecondary),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -1182,22 +1165,22 @@ class _OutstandingInvoicesCard extends StatelessWidget {
             children: [
               Text(
                 '${invoices.length} unpaid invoice${invoices.length == 1 ? '' : 's'}',
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: AppTheme.amber),
+                    color: AppTheme.of(context).textPrimary),
               ),
               Text(
                 '${formatCurrency(total, sym)} not yet counted as income',
                 style: TextStyle(
                     fontSize: 11,
-                    color: AppTheme.amber.withOpacity(0.8)),
+                    color: AppTheme.of(context).textSecondary),
               ),
             ],
           ),
         ),
         Icon(Icons.chevron_right,
-            size: 16, color: AppTheme.amber.withOpacity(0.6)),
+            size: 16, color: AppTheme.of(context).textMuted),
       ]),
     );
   }
@@ -1220,20 +1203,20 @@ class _SetAsideTip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppTheme.accentDim,
+        color: AppTheme.of(context).card,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.accent.withOpacity(0.2)),
+        border: Border.all(color: AppTheme.of(context).border),
       ),
       child: Row(children: [
-        const Icon(Icons.lightbulb_outline, size: 16, color: AppTheme.accent),
+        Icon(Icons.lightbulb_outline, size: 16, color: AppTheme.of(context).textSecondary),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
             'Set aside ${formatCurrency(monthly, sym)}/month to avoid a surprise bill at year end. '
             "That's $pct% of your taxable profit spread monthly.",
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 11,
-                color: AppTheme.accent,
+                color: AppTheme.of(context).textSecondary,
                 fontWeight: FontWeight.w500,
                 height: 1.5),
           ),
@@ -1265,36 +1248,36 @@ class _GenerateSummaryCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
         decoration: BoxDecoration(
-          color: AppTheme.accentDim,
+          color: AppTheme.of(context).card,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppTheme.accent.withOpacity(0.25)),
+          border: Border.all(color: AppTheme.of(context).border),
         ),
         child: Row(children: [
           generating
-              ? const SizedBox(
+              ? SizedBox(
                   width: 18,
                   height: 18,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: AppTheme.accent))
-              : const Icon(Icons.picture_as_pdf_outlined,
+                      strokeWidth: 2, color: AppTheme.of(context).textSecondary))
+              : Icon(Icons.picture_as_pdf_outlined,
                   size: 18, color: AppTheme.accent),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Generate Tax Summary',
+                Text('Generate Tax Summary',
                     style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.accent)),
+                        color: AppTheme.of(context).textPrimary)),
                 Text(
                   hasData
                       ? 'Export $yearLabel as a PDF — estimates only'
                       : 'Add transactions to generate a summary',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 11,
-                      color: AppTheme.accent,
+                      color: AppTheme.of(context).textSecondary,
                       fontWeight: FontWeight.w400),
                 ),
               ],
@@ -1302,7 +1285,9 @@ class _GenerateSummaryCard extends StatelessWidget {
           ),
           Icon(Icons.chevron_right,
               size: 16,
-              color: AppTheme.accent.withOpacity(onGenerate != null ? 0.8 : 0.3)),
+              color: onGenerate != null
+                  ? AppTheme.of(context).textMuted
+                  : AppTheme.of(context).textMuted.withOpacity(0.4)),
         ]),
       ),
     );
@@ -1348,7 +1333,7 @@ class _TaxSettingsCardState extends State<_TaxSettingsCard> {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                    color: AppTheme.accent.withOpacity(0.1),
+                    color: colors.cardAlt,
                     borderRadius: BorderRadius.circular(10)),
                 child: const Center(
                     child: Icon(Icons.tune_outlined,
@@ -1359,11 +1344,10 @@ class _TaxSettingsCardState extends State<_TaxSettingsCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('ESTIMATE SETTINGS',
+                    Text('Estimate settings',
                         style: TextStyle(
-                            fontSize: 9,
+                            fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            letterSpacing: 0.8,
                             color: colors.textMuted)),
                     Text('$taxPct% income tax · tap to adjust',
                         style: TextStyle(
@@ -1394,7 +1378,7 @@ class _TaxSettingsCardState extends State<_TaxSettingsCard> {
                     children: [
                       Text('Income tax rate',
                           style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: colors.textPrimary)),
                       Text('Applied to your taxable profit',
@@ -1415,14 +1399,15 @@ class _TaxSettingsCardState extends State<_TaxSettingsCard> {
                   alignment: Alignment.center,
                   padding: const EdgeInsets.symmetric(vertical: 7),
                   decoration: BoxDecoration(
-                    color: AppTheme.amber.withOpacity(0.1),
+                    color: colors.cardAlt,
                     borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: colors.border),
                   ),
                   child: Text('$taxPct%',
-                      style: const TextStyle(
-                          fontSize: 15,
+                      style: TextStyle(
+                          fontSize: 16,
                           fontWeight: FontWeight.w800,
-                          color: AppTheme.amber)),
+                          color: colors.textPrimary)),
                 ),
                 const SizedBox(width: 8),
                 _RateBtn(
@@ -1444,7 +1429,7 @@ class _TaxSettingsCardState extends State<_TaxSettingsCard> {
                         Text(
                             'Mileage rate (per ${provider.mileageUseKm ? 'km' : 'mi'})',
                             style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w600,
                                 color: colors.textPrimary)),
                         Text('Used to calculate mileage deductions',
@@ -1466,15 +1451,16 @@ class _TaxSettingsCardState extends State<_TaxSettingsCard> {
                     alignment: Alignment.center,
                     padding: const EdgeInsets.symmetric(vertical: 7),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                      color: colors.cardAlt,
                       borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: colors.border),
                     ),
                     child: Text(
                         '\$${provider.customMileageRate.toStringAsFixed(2)}',
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF8B5CF6))),
+                            color: colors.textPrimary)),
                   ),
                   const SizedBox(width: 8),
                   _RateBtn(
@@ -1497,7 +1483,7 @@ class _TaxSettingsCardState extends State<_TaxSettingsCard> {
                   ),
                   child: Row(children: [
                     const Text('🇦🇺',
-                        style: TextStyle(fontSize: 14)),
+                        style: TextStyle(fontSize: 13)),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -1516,7 +1502,7 @@ class _TaxSettingsCardState extends State<_TaxSettingsCard> {
               Text(
                 'These are estimates only. Consult a qualified accountant for your actual obligations.',
                 style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 11,
                     color: colors.textMuted,
                     height: 1.45,
                     fontStyle: FontStyle.italic),
@@ -1577,16 +1563,16 @@ class _TaxEmptyState extends StatelessWidget {
             Container(
               width: 72, height: 72,
               decoration: BoxDecoration(
-                color: AppTheme.amber.withOpacity(0.1),
+                color: AppTheme.of(context).cardAlt,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Center(
-                  child: Icon(Icons.receipt_long_outlined, size: 36, color: AppTheme.amber)),
+              child: Center(
+                  child: Icon(Icons.receipt_long_outlined, size: 36, color: AppTheme.of(context).textSecondary)),
             ),
             const SizedBox(height: 20),
             const Text(
               'Your tax summary lives here',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),

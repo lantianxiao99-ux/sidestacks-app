@@ -54,8 +54,15 @@ class _StackDetailScreenState extends State<StackDetailScreen>
         ),
         title: Row(
           children: [
-            Icon(stack.hustleType.icon, size: 20,
-                color: AppTheme.of(context).textSecondary),
+            Icon(
+              stack.stackType == StackType.income
+                  ? stack.hustleType.icon
+                  : stack.stackType.icon,
+              size: 20,
+              color: stack.stackType == StackType.income
+                  ? AppTheme.of(context).textSecondary
+                  : stack.stackType.color(context),
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -105,7 +112,7 @@ class _StackDetailScreenState extends State<StackDetailScreen>
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: const Text('PRO',
-                    style: TextStyle(fontSize: 7, fontWeight: FontWeight.w800, color: Colors.white)),
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white)),
               );
               return [
                 PopupMenuItem<String>(
@@ -200,56 +207,188 @@ class _StackDetailScreenState extends State<StackDetailScreen>
       ),
       body: Column(
         children: [
-          // ── Stats carousel ───────────────────────────────────────────────
+          // ── Stats carousel (type-aware) ──────────────────────────────────
           SizedBox(
-            height: 110,
+            height: 114,
             child: ListView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
               children: [
-                StatCard(
-                    icon: Icons.trending_up,
-                    label: 'Revenue',
-                    value: formatCurrency(stack.totalIncome, symbol),
-                    valueColor: AppTheme.green),
-                const SizedBox(width: 10),
-                StatCard(
-                    icon: Icons.trending_down,
-                    label: 'Expenses',
-                    value: formatCurrency(stack.totalExpenses, symbol),
-                    valueColor: AppTheme.red),
-                const SizedBox(width: 10),
-                StatCard(
-                    icon: Icons.account_balance_wallet_outlined,
-                    label: 'Net Profit',
-                    value: formatCurrency(stack.netProfit, symbol),
-                    valueColor: stack.netProfit >= 0 ? AppTheme.green : AppTheme.red),
-                const SizedBox(width: 10),
-                StatCard(
-                    icon: Icons.percent,
-                    label: 'Margin',
-                    value: formatPercent(stack.profitMargin),
-                    valueColor: stack.profitMargin >= 0 ? AppTheme.green : AppTheme.red),
-                if (stack.effectiveHourlyRate != null) ...[
+                if (stack.stackType == StackType.budget) ...[
+                  StatCard(
+                      icon: Icons.shopping_bag_outlined,
+                      label: 'Spent This Month',
+                      value: formatCurrency(stack.thisMonthSpend, symbol),
+                      valueColor: stack.isOverBudget
+                          ? AppTheme.red
+                          : AppTheme.of(context).textPrimary),
                   const SizedBox(width: 10),
                   StatCard(
-                    icon: Icons.timer_outlined,
-                    label: 'Hours Logged',
-                    value: '${stack.totalHoursWorked.toStringAsFixed(1)} hrs',
-                    valueColor: AppTheme.accent,
-                  ),
+                      icon: Icons.account_balance_wallet_outlined,
+                      label: 'Monthly Limit',
+                      value: stack.monthlyBudget != null
+                          ? formatCurrency(stack.monthlyBudget!, symbol)
+                          : '—',
+                      valueColor: AppTheme.of(context).textSecondary),
                   const SizedBox(width: 10),
                   StatCard(
-                    icon: Icons.attach_money,
-                    label: 'Effective ${symbol}/hr',
-                    value: formatCurrency(stack.effectiveHourlyRate!, symbol),
-                    valueColor: AppTheme.accent,
-                  ),
+                      icon: stack.isOverBudget
+                          ? Icons.warning_amber_outlined
+                          : Icons.check_circle_outline,
+                      label: stack.isOverBudget ? 'Over Budget' : 'Remaining',
+                      value: formatCurrency(
+                          stack.budgetRemaining.abs(), symbol),
+                      valueColor: stack.isOverBudget
+                          ? AppTheme.red
+                          : AppTheme.green),
+                  const SizedBox(width: 10),
+                  StatCard(
+                      icon: Icons.pie_chart_outline,
+                      label: 'Used',
+                      value:
+                          '${(stack.budgetUsedFraction * 100).clamp(0, 999).toStringAsFixed(0)}%',
+                      valueColor: stack.isOverBudget
+                          ? AppTheme.red
+                          : AppTheme.accent),
+                  const SizedBox(width: 10),
+                  StatCard(
+                      icon: Icons.history,
+                      label: 'Total Spent',
+                      value: formatCurrency(stack.totalExpenses, symbol),
+                      valueColor: AppTheme.of(context).textSecondary),
+                ] else if (stack.stackType == StackType.savings) ...[
+                  StatCard(
+                      icon: Icons.savings_outlined,
+                      label: 'Total Saved',
+                      value: formatCurrency(stack.totalSaved, symbol),
+                      valueColor: AppTheme.amber),
+                  const SizedBox(width: 10),
+                  StatCard(
+                      icon: Icons.flag_outlined,
+                      label: 'Target',
+                      value: stack.savingsTarget != null
+                          ? formatCurrency(stack.savingsTarget!, symbol)
+                          : '—',
+                      valueColor: AppTheme.of(context).textSecondary),
+                  const SizedBox(width: 10),
+                  StatCard(
+                      icon: stack.savingsProgress >= 1.0
+                          ? Icons.check_circle_outline
+                          : Icons.trending_up,
+                      label: stack.savingsProgress >= 1.0
+                          ? 'Goal Reached!'
+                          : 'Remaining',
+                      value: stack.savingsTarget != null
+                          ? formatCurrency(
+                              stack.savingsRemaining.abs(), symbol)
+                          : '—',
+                      valueColor: stack.savingsProgress >= 1.0
+                          ? AppTheme.green
+                          : AppTheme.amber),
+                  const SizedBox(width: 10),
+                  StatCard(
+                      icon: Icons.percent,
+                      label: 'Progress',
+                      value:
+                          '${(stack.savingsProgress * 100).clamp(0, 100).toStringAsFixed(0)}%',
+                      valueColor: AppTheme.amber),
+                  if (stack.totalExpenses > 0) ...[
+                    const SizedBox(width: 10),
+                    StatCard(
+                        icon: Icons.remove_circle_outline,
+                        label: 'Withdrawn',
+                        value: formatCurrency(stack.totalExpenses, symbol),
+                        valueColor: AppTheme.expense),
+                  ],
+                ] else if (stack.stackType == StackType.salary) ...[
+                  StatCard(
+                      icon: Icons.payments_outlined,
+                      label: 'This Month',
+                      value: formatCurrency(stack.thisMonthIncome, symbol),
+                      valueColor: const Color(0xFF2563EB)),
+                  const SizedBox(width: 10),
+                  StatCard(
+                      icon: Icons.calendar_today_outlined,
+                      label: 'Year to Date',
+                      value: formatCurrency(stack.ytdIncome, symbol),
+                      valueColor: AppTheme.of(context).textPrimary),
+                  const SizedBox(width: 10),
+                  StatCard(
+                      icon: Icons.receipt_outlined,
+                      label: 'Paychecks',
+                      value: '${stack.thisMonthTransactionCount} this month',
+                      valueColor: AppTheme.of(context).textSecondary),
+                  const SizedBox(width: 10),
+                  StatCard(
+                      icon: Icons.account_balance_wallet_outlined,
+                      label: 'All Time',
+                      value: formatCurrency(stack.totalIncome, symbol),
+                      valueColor: AppTheme.of(context).textSecondary),
+                ] else ...[
+                  // Income stack
+                  StatCard(
+                      icon: Icons.trending_up,
+                      label: 'Revenue',
+                      value: formatCurrency(stack.totalIncome, symbol),
+                      valueColor: AppTheme.green),
+                  const SizedBox(width: 10),
+                  StatCard(
+                      icon: Icons.trending_down,
+                      label: 'Expenses',
+                      value: formatCurrency(stack.totalExpenses, symbol),
+                      valueColor: AppTheme.expense),
+                  const SizedBox(width: 10),
+                  StatCard(
+                      icon: Icons.account_balance_wallet_outlined,
+                      label: 'Net Profit',
+                      value: formatCurrency(stack.netProfit, symbol),
+                      valueColor: stack.netProfit >= 0
+                          ? AppTheme.green
+                          : AppTheme.expense),
+                  const SizedBox(width: 10),
+                  StatCard(
+                      icon: Icons.percent,
+                      label: 'Margin',
+                      value: formatPercent(stack.profitMargin),
+                      valueColor: stack.profitMargin >= 0
+                          ? AppTheme.green
+                          : AppTheme.expense),
+                  if (stack.effectiveHourlyRate != null) ...[
+                    const SizedBox(width: 10),
+                    StatCard(
+                      icon: Icons.timer_outlined,
+                      label: 'Hours Logged',
+                      value:
+                          '${stack.totalHoursWorked.toStringAsFixed(1)} hrs',
+                      valueColor: AppTheme.accent,
+                    ),
+                    const SizedBox(width: 10),
+                    StatCard(
+                      icon: Icons.attach_money,
+                      label: 'Effective ${symbol}/hr',
+                      value: formatCurrency(
+                          stack.effectiveHourlyRate!, symbol),
+                      valueColor: AppTheme.accent,
+                    ),
+                  ],
                 ],
               ],
             ),
           ),
-          if (stack.goalAmount != null || stack.monthlyGoalAmount != null)
+          // ── Budget / Savings progress bar ────────────────────────────────
+          if (stack.stackType == StackType.budget &&
+              stack.monthlyBudget != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              child: _BudgetProgressBar(stack: stack, symbol: symbol),
+            )
+          else if (stack.stackType == StackType.savings &&
+              stack.savingsTarget != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              child: _SavingsProgressBar(stack: stack, symbol: symbol),
+            )
+          else if (stack.goalAmount != null || stack.monthlyGoalAmount != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
               child: _GoalProgressBar(stack: stack, symbol: symbol),
@@ -261,7 +400,7 @@ class _StackDetailScreenState extends State<StackDetailScreen>
               padding: const EdgeInsets.all(3),
               decoration: BoxDecoration(
                 color: AppTheme.of(context).card,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: AppTheme.of(context).border),
               ),
               child: TabBar(
@@ -297,12 +436,36 @@ class _StackDetailScreenState extends State<StackDetailScreen>
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () =>
-            showAddTransactionSheet(context, preselectedStackId: stack.id),
-        backgroundColor: AppTheme.accent,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => showAddTransactionSheet(
+          context,
+          preselectedStackId: stack.id,
+          lockType: stack.stackType != StackType.income,
+          initialType: stack.stackType == StackType.budget
+              ? TransactionType.expense
+              : TransactionType.income,
+        ),
+        backgroundColor: stack.stackType.color(context),
         foregroundColor: Colors.white,
-        child: const Icon(Icons.add),
+        icon: Icon(
+          stack.stackType == StackType.savings
+              ? Icons.savings_outlined
+              : stack.stackType == StackType.salary
+                  ? Icons.payments_outlined
+                  : Icons.add,
+          size: 18,
+        ),
+        label: Text(
+          stack.stackType == StackType.budget
+              ? 'Add Expense'
+              : stack.stackType == StackType.savings
+                  ? 'Add Deposit'
+                  : stack.stackType == StackType.salary
+                      ? 'Add Paycheck'
+                      : 'Add Transaction',
+          style: const TextStyle(
+              fontSize: 13, fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }
@@ -310,19 +473,7 @@ class _StackDetailScreenState extends State<StackDetailScreen>
   Future<void> _exportCsv(
       BuildContext context, SideStack stack, AppProvider provider) async {
     if (!provider.isPremium) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('CSV export is a Pro feature',
-              style: TextStyle(fontFamily: 'Sora', fontSize: 13)),
-          backgroundColor: AppTheme.of(context).card,
-          behavior: SnackBarBehavior.floating,
-          action: SnackBarAction(
-            label: 'Upgrade',
-            textColor: AppTheme.accent,
-            onPressed: () {},
-          ),
-        ),
-      );
+      AppToast.error(context, 'CSV export is a Pro feature.');
       return;
     }
     final csv = provider.buildCsv(stackId: stack.id);
@@ -330,33 +481,14 @@ class _StackDetailScreenState extends State<StackDetailScreen>
         '${stack.name.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_')}_transactions.csv';
     await downloadCsv(csv, filename);
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Exported $filename',
-              style: TextStyle(fontFamily: 'Sora', fontSize: 13)),
-          backgroundColor: AppTheme.of(context).card,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      AppToast.show(context, 'Exported \$filename');
     }
   }
 
   Future<void> _exportPdf(
       BuildContext context, SideStack stack, AppProvider provider) async {
     if (!provider.isPremium) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('PDF export is a Pro feature',
-              style: TextStyle(fontFamily: 'Sora', fontSize: 13)),
-          backgroundColor: AppTheme.of(context).card,
-          behavior: SnackBarBehavior.floating,
-          action: SnackBarAction(
-            label: 'Upgrade',
-            textColor: AppTheme.accent,
-            onPressed: () {},
-          ),
-        ),
-      );
+      AppToast.error(context, 'PDF export is a Pro feature.');
       return;
     }
     try {
@@ -367,14 +499,7 @@ class _StackDetailScreenState extends State<StackDetailScreen>
       );
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not generate PDF: $e',
-                style: TextStyle(fontFamily: 'Sora', fontSize: 13)),
-            backgroundColor: AppTheme.of(context).card,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        AppToast.error(context, 'Could not generate PDF: \$e');
       }
     }
   }
@@ -384,7 +509,7 @@ class _StackDetailScreenState extends State<StackDetailScreen>
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: AppTheme.of(context).card,
-        title: const Text('Archive SideStack?'),
+        title: const Text('Archive?'),
         content: Text(
             '"${stack.name}" will be hidden from your dashboard. All data is preserved and you can restore it any time.'),
         actions: [
@@ -413,7 +538,7 @@ class _StackDetailScreenState extends State<StackDetailScreen>
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: AppTheme.of(context).card,
-        title: const Text('Delete SideStack?'),
+        title: const Text('Delete Stack?'),
         content: Text(
             'This will permanently delete "${stack.name}" and all its transactions.'),
         actions: [
@@ -431,6 +556,170 @@ class _StackDetailScreenState extends State<StackDetailScreen>
             },
             child: const Text('Delete',
                 style: TextStyle(color: AppTheme.red)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Budget Progress Bar ───────────────────────────────────────────────────────
+
+class _BudgetProgressBar extends StatelessWidget {
+  final SideStack stack;
+  final String symbol;
+  const _BudgetProgressBar({required this.stack, required this.symbol});
+
+  @override
+  Widget build(BuildContext context) {
+    final limit = stack.monthlyBudget!;
+    final spent = stack.thisMonthSpend;
+    final fraction = stack.budgetUsedFraction.clamp(0.0, 1.0);
+    final over = stack.isOverBudget;
+    final color = over ? AppTheme.red : AppTheme.accent;
+    final now = DateTime.now();
+    final monthName = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug',
+        'Sep', 'Oct', 'Nov', 'Dec'][now.month - 1];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.of(context).card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+            color: over ? AppTheme.red.withOpacity(0.4) : AppTheme.of(context).border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                over ? Icons.warning_amber_rounded : Icons.account_balance_wallet_outlined,
+                size: 13,
+                color: color,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '$monthName Budget',
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.of(context).textPrimary),
+              ),
+              const Spacer(),
+              Text(
+                '${formatCurrency(spent, symbol)} / ${formatCurrency(limit, symbol)}',
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.of(context).textSecondary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 7),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: fraction,
+              backgroundColor: AppTheme.of(context).cardAlt,
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+              minHeight: 6,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            over
+                ? '${formatCurrency(stack.budgetRemaining.abs(), symbol)} over budget'
+                : '${formatCurrency(stack.budgetRemaining, symbol)} remaining this month',
+            style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: over
+                    ? AppTheme.red
+                    : AppTheme.of(context).textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Savings Progress Bar ──────────────────────────────────────────────────────
+
+class _SavingsProgressBar extends StatelessWidget {
+  final SideStack stack;
+  final String symbol;
+  const _SavingsProgressBar({required this.stack, required this.symbol});
+
+  @override
+  Widget build(BuildContext context) {
+    final target = stack.savingsTarget!;
+    final saved = stack.totalSaved;
+    final progress = stack.savingsProgress.clamp(0.0, 1.0);
+    final reached = stack.savingsProgress >= 1.0;
+    final color = reached ? AppTheme.green : AppTheme.amber;
+    final pct = (stack.savingsProgress * 100).clamp(0, 100).toStringAsFixed(0);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.of(context).card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+            color: reached
+                ? AppTheme.green.withOpacity(0.4)
+                : AppTheme.of(context).border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                reached ? Icons.check_circle_outline : Icons.savings_outlined,
+                size: 13,
+                color: color,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                reached ? 'Goal Reached! 🎉' : 'Savings Progress',
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.of(context).textPrimary),
+              ),
+              const Spacer(),
+              Text(
+                '${formatCurrency(saved, symbol)} / ${formatCurrency(target, symbol)}',
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.of(context).textSecondary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 7),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progress,
+              backgroundColor: AppTheme.of(context).cardAlt,
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+              minHeight: 6,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            reached
+                ? 'You\'ve hit your target!'
+                : '$pct% there — ${formatCurrency(stack.savingsRemaining, symbol)} to go',
+            style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: reached
+                    ? AppTheme.green
+                    : AppTheme.of(context).textSecondary),
           ),
         ],
       ),
@@ -483,9 +772,9 @@ class _MonthlyGoalBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.25)),
+        color: AppTheme.of(context).card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.of(context).border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -503,16 +792,15 @@ class _MonthlyGoalBar extends StatelessWidget {
                 style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: color),
+                    color: AppTheme.of(context).textPrimary),
               ),
               const Spacer(),
               Text(
                 '${formatCurrency(stack.thisMonthIncome, symbol)} / ${formatCurrency(stack.monthlyGoalAmount!, symbol)}',
                 style: TextStyle(
-                    fontSize: 10,
-                    fontFamily: 'Courier',
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: color),
+                    color: AppTheme.of(context).textSecondary),
               ),
             ],
           ),
@@ -521,7 +809,7 @@ class _MonthlyGoalBar extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: progress,
-              backgroundColor: color.withOpacity(0.12),
+              backgroundColor: AppTheme.of(context).cardAlt,
               valueColor: AlwaysStoppedAnimation<Color>(color),
               minHeight: 6,
             ),
@@ -531,9 +819,9 @@ class _MonthlyGoalBar extends StatelessWidget {
             Text(
               paceMsg,
               style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: FontWeight.w500,
-                  color: color.withOpacity(0.8)),
+                  color: AppTheme.of(context).textSecondary),
             ),
           ],
         ],
@@ -584,7 +872,7 @@ class _AllTimeGoalBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: AppTheme.of(context).card,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppTheme.of(context).border),
       ),
       child: Column(
@@ -600,7 +888,7 @@ class _AllTimeGoalBar extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 reached
-                    ? 'Revenue goal reached! 🎉'
+                    ? 'Revenue goal reached'
                     : 'Revenue Goal — $pct% there',
                 style: TextStyle(
                     fontSize: 11,
@@ -611,8 +899,7 @@ class _AllTimeGoalBar extends StatelessWidget {
               Text(
                 '${formatCurrency(stack.totalIncome, symbol)} / ${formatCurrency(stack.goalAmount!, symbol)}',
                 style: TextStyle(
-                    fontSize: 10,
-                    fontFamily: 'Courier',
+                    fontSize: 11,
                     color: AppTheme.of(context).textMuted),
               ),
             ],
@@ -637,7 +924,7 @@ class _AllTimeGoalBar extends StatelessWidget {
                 Text(
                   projection,
                   style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
                       color: AppTheme.of(context).textMuted),
                 ),
               ],
@@ -730,12 +1017,12 @@ class _TransactionTabState extends State<_TransactionTab> {
                     controller: _searchController,
                     onChanged: (v) => setState(() => _query = v),
                     style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         color: AppTheme.of(context).textPrimary),
                     decoration: InputDecoration(
                       hintText: 'Search transactions…',
                       hintStyle: TextStyle(
-                          fontSize: 12,
+                          fontSize: 13,
                           color: AppTheme.of(context).textMuted),
                       prefixIcon: Icon(Icons.search,
                           size: 16,
@@ -780,9 +1067,7 @@ class _TransactionTabState extends State<_TransactionTab> {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: _dateRange != null
-                        ? AppTheme.accentDim
-                        : AppTheme.of(context).card,
+                    color: AppTheme.of(context).card,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: _dateRange != null
@@ -814,7 +1099,11 @@ class _TransactionTabState extends State<_TransactionTab> {
                 ),
                 const SizedBox(width: 6),
                 _FilterChip(
-                  label: 'Income',
+                  label: widget.stack.stackType == StackType.savings
+                      ? 'Deposits'
+                      : widget.stack.stackType == StackType.budget
+                          ? 'Other'
+                          : 'Income',
                   active: _filter == _TxFilter.income,
                   color: AppTheme.green,
                   onTap: () =>
@@ -822,7 +1111,9 @@ class _TransactionTabState extends State<_TransactionTab> {
                 ),
                 const SizedBox(width: 6),
                 _FilterChip(
-                  label: 'Expense',
+                  label: widget.stack.stackType == StackType.savings
+                      ? 'Withdrawals'
+                      : 'Expenses',
                   active: _filter == _TxFilter.expense,
                   color: AppTheme.red,
                   onTap: () =>
@@ -859,7 +1150,11 @@ class _TransactionTabState extends State<_TransactionTab> {
                         Text(
                           hasFilters
                               ? 'No transactions match your filters'
-                              : 'No transactions yet',
+                              : widget.stack.stackType == StackType.budget
+                                  ? 'No expenses yet'
+                                  : widget.stack.stackType == StackType.savings
+                                      ? 'No deposits yet'
+                                      : 'No transactions yet',
                           style: TextStyle(
                               fontSize: 13,
                               color: AppTheme.of(context).textSecondary),
@@ -870,7 +1165,7 @@ class _TransactionTabState extends State<_TransactionTab> {
                             onTap: _clearFilters,
                             child: Text('Clear filters',
                                 style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 13,
                                     color: AppTheme.accent)),
                           ),
                         ],
@@ -932,9 +1227,9 @@ class _LockedHistoryBanner extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: AppTheme.accentDim,
+            color: AppTheme.of(context).card,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppTheme.accent.withOpacity(0.3)),
+            border: Border.all(color: AppTheme.of(context).border),
           ),
           child: Row(
             children: [
@@ -942,7 +1237,7 @@ class _LockedHistoryBanner extends StatelessWidget {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: AppTheme.accent.withOpacity(0.15),
+                  color: AppTheme.of(context).cardAlt,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(Icons.lock_outline,
@@ -955,23 +1250,23 @@ class _LockedHistoryBanner extends StatelessWidget {
                   children: [
                     Text(
                       '$hiddenCount older transaction${hiddenCount == 1 ? '' : 's'} hidden',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: AppTheme.accent),
+                          color: AppTheme.of(context).textPrimary),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'Upgrade to Pro to view your full transaction history',
                       style: TextStyle(
                           fontSize: 11,
-                          color: AppTheme.accent.withOpacity(0.7)),
+                          color: AppTheme.of(context).textSecondary),
                     ),
                   ],
                 ),
               ),
               Icon(Icons.chevron_right,
-                  size: 16, color: AppTheme.accent.withOpacity(0.6)),
+                  size: 16, color: AppTheme.of(context).textMuted),
             ],
           ),
         ),
@@ -1003,11 +1298,10 @@ class _FilterChip extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: active ? c.withOpacity(0.12) : AppTheme.of(context).card,
+          color: AppTheme.of(context).card,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color:
-                  active ? c : AppTheme.of(context).border),
+              color: active ? AppTheme.accent : AppTheme.of(context).border),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1082,7 +1376,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                   horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
                 color: AppTheme.of(context).card,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                     color: _range != null
                         ? AppTheme.accent
@@ -1172,7 +1466,7 @@ class _TransactionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isIncome = tx.type == TransactionType.income;
-    final color = isIncome ? AppTheme.green : AppTheme.red;
+    final color = isIncome ? AppTheme.green : AppTheme.expense;
     final symbol = context.watch<AppProvider>().currencySymbol;
 
     return Dismissible(
@@ -1183,7 +1477,7 @@ class _TransactionRow extends StatelessWidget {
         padding: const EdgeInsets.only(right: 20),
         margin: const EdgeInsets.only(bottom: 6),
         decoration: BoxDecoration(
-          color: AppTheme.redDim,
+          color: AppTheme.of(context).cardAlt,
           borderRadius: BorderRadius.circular(12),
         ),
         child: const Icon(Icons.delete_outline, color: AppTheme.red),
@@ -1224,29 +1518,13 @@ class _TransactionRow extends StatelessWidget {
               const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: AppTheme.of(context).card,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(color: AppTheme.of(context).border),
           ),
           child: Row(
             children: [
-              // Type indicator circle
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: isIncome ? AppTheme.greenDim : AppTheme.redDim,
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    isIncome ? '+' : '−',
-                    style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: color),
-                  ),
-                ),
-              ),
+              // Category icon
+              CategoryIconWidget(category: tx.category, isIncome: isIncome),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -1257,7 +1535,7 @@ class _TransactionRow extends StatelessWidget {
                         Expanded(
                           child: Text(tx.category,
                               style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w500)),
                         ),
                         // Recurring badge
@@ -1267,22 +1545,23 @@ class _TransactionRow extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 5, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppTheme.accentDim,
+                              color: AppTheme.of(context).cardAlt,
                               borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: AppTheme.of(context).border),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.autorenew,
-                                    size: 9, color: AppTheme.accent),
+                                Icon(Icons.autorenew,
+                                    size: 9, color: AppTheme.of(context).textMuted),
                                 const SizedBox(width: 3),
                                 Text(
                                   tx.recurrenceInterval?.label ??
                                       'Recurring',
-                                  style: const TextStyle(
-                                      fontSize: 8,
+                                  style: TextStyle(
+                                      fontSize: 11,
                                       fontWeight: FontWeight.w600,
-                                      color: AppTheme.accent),
+                                      color: AppTheme.of(context).textMuted),
                                 ),
                               ],
                             ),
@@ -1292,7 +1571,7 @@ class _TransactionRow extends StatelessWidget {
                     Text(
                       '${DateFormat('MMM d').format(tx.date)}${tx.notes != null ? ' · ${tx.notes}' : ''}',
                       style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 11,
                           color: AppTheme.of(context).textSecondary),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1304,7 +1583,6 @@ class _TransactionRow extends StatelessWidget {
               Text(
                 '${isIncome ? '+' : '−'}${formatCurrency(tx.amount, symbol)}',
                 style: TextStyle(
-                  fontFamily: 'Courier',
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: color,
@@ -1317,8 +1595,9 @@ class _TransactionRow extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: AppTheme.accentDim,
+                      color: AppTheme.of(context).cardAlt,
                       borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AppTheme.of(context).border),
                     ),
                     child: const Icon(
                       Icons.receipt_outlined,
@@ -1438,18 +1717,17 @@ class _ClientBreakdownCard extends StatelessWidget {
                 size: 14, color: AppTheme.of(context).textMuted),
             const SizedBox(width: 6),
             Text(
-              'CLIENTS',
+              'Clients',
               style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: AppTheme.of(context).textMuted,
-                  letterSpacing: 0.8),
+                  color: AppTheme.of(context).textMuted),
             ),
             const Spacer(),
             Text(
               '${clients.length} client${clients.length == 1 ? '' : 's'}',
               style: TextStyle(
-                  fontSize: 10, color: AppTheme.of(context).textMuted),
+                  fontSize: 11, color: AppTheme.of(context).textMuted),
             ),
           ]),
           const SizedBox(height: 12),
@@ -1461,7 +1739,7 @@ class _ClientBreakdownCard extends StatelessWidget {
               AppTheme.accent,
               AppTheme.green,
               AppTheme.amber,
-              AppTheme.red,
+              AppTheme.expense,
             ];
             final color = colors[i % colors.length];
             return Padding(
@@ -1472,18 +1750,17 @@ class _ClientBreakdownCard extends StatelessWidget {
                     Expanded(
                       child: Text(e.key,
                           style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 13,
                               fontWeight: FontWeight.w500)),
                     ),
                     Text(formatCurrency(e.value, symbol),
                         style: TextStyle(
                             fontSize: 11,
-                            fontFamily: 'Courier',
                             color: AppTheme.of(context).textSecondary)),
                     const SizedBox(width: 8),
                     Text('${(pct * 100).toStringAsFixed(0)}%',
                         style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: FontWeight.w600,
                             color: color)),
                   ]),
@@ -1529,16 +1806,16 @@ class _HourlyRateCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.07),
+        color: AppTheme.of(context).card,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.25)),
+        border: Border.all(color: AppTheme.of(context).border),
       ),
       child: Row(children: [
         Container(
           width: 42,
           height: 42,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.12),
+            color: AppTheme.of(context).cardAlt,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(Icons.timer_outlined, color: color, size: 20),
@@ -1548,20 +1825,19 @@ class _HourlyRateCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('EFFECTIVE HOURLY RATE',
+              Text('Effective hourly rate',
                   style: TextStyle(
-                      fontSize: 9,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: color.withOpacity(0.7),
-                      letterSpacing: 0.8)),
+                      color: AppTheme.of(context).textMuted)),
               const SizedBox(height: 4),
               Text(
                 '${formatCurrency(rate, symbol)}/hr',
                 style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: color,
-                    fontFamily: 'Courier'),
+                    ),
               ),
             ],
           ),
@@ -1579,7 +1855,7 @@ class _HourlyRateCard extends StatelessWidget {
             Text(
               'logged',
               style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 11,
                   color: AppTheme.of(context).textMuted),
             ),
           ],
@@ -1625,10 +1901,20 @@ class _AnalyticsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (stack.transactions.isEmpty) {
-      return const EmptyState(
-        icon: Icons.trending_up_outlined,
+      return EmptyState(
+        icon: stack.stackType == StackType.budget
+            ? Icons.shopping_bag_outlined
+            : stack.stackType == StackType.savings
+                ? Icons.savings_outlined
+                : Icons.trending_up_outlined,
         title: 'No data yet',
-        subtitle: 'Add your first income or expense to start tracking this stack.',
+        subtitle: stack.stackType == StackType.budget
+            ? 'Add your first expense to start tracking this budget.'
+            : stack.stackType == StackType.savings
+                ? 'Add your first deposit to start tracking your savings.'
+                : stack.stackType == StackType.salary
+                    ? 'Add your first paycheck to start tracking your income.'
+                    : 'Add your first income or expense to start tracking this stack.',
       );
     }
 
@@ -1649,8 +1935,13 @@ class _AnalyticsTab extends StatelessWidget {
         if (stack.clientRevenue.isNotEmpty) const SizedBox(height: 10),
 
         if (months.length > 1) ...[
+          // Line chart — type-aware label and data
           _ChartCard(
-            title: 'Profit Over Time',
+            title: stack.stackType == StackType.budget
+                ? 'Spending Over Time'
+                : stack.stackType == StackType.savings
+                    ? 'Deposits Over Time'
+                    : 'Profit Over Time',
             child: SizedBox(
               height: 160,
               child: LineChart(
@@ -1683,7 +1974,7 @@ class _AnalyticsTab extends StatelessWidget {
                           }
                           return Text(months[i],
                               style: TextStyle(
-                                  fontSize: 9,
+                                  fontSize: 11,
                                   color: AppTheme.of(context).textMuted));
                         },
                       ),
@@ -1693,23 +1984,40 @@ class _AnalyticsTab extends StatelessWidget {
                     LineChartBarData(
                       spots: months.asMap().entries.map((e) {
                         final d = monthly[e.value]!;
-                        return FlSpot(e.key.toDouble(),
-                            d['income']! - d['expense']!);
+                        final yVal = stack.stackType == StackType.budget
+                            ? d['expense']!
+                            : stack.stackType == StackType.savings
+                                ? d['income']!
+                                : d['income']! - d['expense']!;
+                        return FlSpot(e.key.toDouble(), yVal);
                       }).toList(),
                       isCurved: true,
-                      color: AppTheme.green,
+                      color: stack.stackType == StackType.budget
+                          ? AppTheme.red
+                          : stack.stackType == StackType.savings
+                              ? AppTheme.amber
+                              : AppTheme.green,
                       barWidth: 2.5,
                       dotData: FlDotData(
                         getDotPainter: (_, __, ___, ____) =>
                             FlDotCirclePainter(
                                 radius: 3,
-                                color: AppTheme.green,
+                                color: stack.stackType == StackType.budget
+                                    ? AppTheme.red
+                                    : stack.stackType == StackType.savings
+                                        ? AppTheme.amber
+                                        : AppTheme.green,
                                 strokeWidth: 0,
                                 strokeColor: Colors.transparent),
                       ),
                       belowBarData: BarAreaData(
                         show: true,
-                        color: AppTheme.green.withOpacity(0.08),
+                        color: (stack.stackType == StackType.budget
+                                ? AppTheme.red
+                                : stack.stackType == StackType.savings
+                                    ? AppTheme.amber
+                                    : AppTheme.green)
+                            .withOpacity(0.08),
                       ),
                     ),
                   ],
@@ -1718,8 +2026,13 @@ class _AnalyticsTab extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
+          // Bar chart — type-aware
           _ChartCard(
-            title: 'Income vs Expenses',
+            title: stack.stackType == StackType.budget
+                ? 'Monthly Spending'
+                : stack.stackType == StackType.savings
+                    ? 'Monthly Deposits'
+                    : 'Income vs Expenses',
             child: SizedBox(
               height: 160,
               child: BarChart(
@@ -1750,7 +2063,7 @@ class _AnalyticsTab extends StatelessWidget {
                           }
                           return Text(months[i],
                               style: TextStyle(
-                                  fontSize: 9,
+                                  fontSize: 11,
                                   color: AppTheme.of(context).textMuted));
                         },
                       ),
@@ -1758,6 +2071,31 @@ class _AnalyticsTab extends StatelessWidget {
                   ),
                   barGroups: months.asMap().entries.map((e) {
                     final d = monthly[e.value]!;
+                    if (stack.stackType == StackType.budget) {
+                      return BarChartGroupData(
+                        x: e.key,
+                        barRods: [
+                          BarChartRodData(
+                              toY: d['expense']!,
+                              color: AppTheme.red,
+                              width: 14,
+                              borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(4))),
+                        ],
+                      );
+                    } else if (stack.stackType == StackType.savings) {
+                      return BarChartGroupData(
+                        x: e.key,
+                        barRods: [
+                          BarChartRodData(
+                              toY: d['income']!,
+                              color: AppTheme.amber,
+                              width: 14,
+                              borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(4))),
+                        ],
+                      );
+                    }
                     return BarChartGroupData(
                       x: e.key,
                       barRods: [
@@ -1851,7 +2189,6 @@ class _AnalyticsTab extends StatelessWidget {
                             const SizedBox(width: 8),
                             Text(formatCurrency(e.value.value, symbol),
                                 style: TextStyle(
-                                    fontFamily: 'Courier',
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600)),
                           ],
@@ -1886,12 +2223,11 @@ class _ChartCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            title.toUpperCase(),
+            title,
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
               color: AppTheme.of(context).textMuted,
-              letterSpacing: 0.8,
             ),
           ),
           const SizedBox(height: 14),
@@ -2027,7 +2363,7 @@ class _ActionButton extends StatelessWidget {
                         child: const Text(
                           'PRO',
                           style: TextStyle(
-                              fontSize: 7,
+                              fontSize: 11,
                               fontWeight: FontWeight.w800,
                               color: Colors.white),
                         ),
@@ -2039,7 +2375,7 @@ class _ActionButton extends StatelessWidget {
               Text(
                 label,
                 style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: effectiveColor),
               ),

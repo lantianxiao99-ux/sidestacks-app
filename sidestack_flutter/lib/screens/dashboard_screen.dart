@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/models.dart';
@@ -13,7 +14,6 @@ import '../widgets/invoice_sheet.dart';
 import '../widgets/cashflow_sheet.dart';
 import '../providers/mileage_provider.dart';
 import 'stack_detail_screen.dart';
-import 'analytics_screen.dart' show showInsightsLayoutEditor;
 import 'mileage_screen.dart';
 import 'invoices_screen.dart';
 import 'rate_comparator_screen.dart' show showRateComparatorScreen;
@@ -107,7 +107,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Container(
                   width: 64, height: 64,
                   decoration: BoxDecoration(
-                    color: AppTheme.redDim,
+                    color: AppTheme.of(context).cardAlt,
                     borderRadius: BorderRadius.circular(18),
                   ),
                   child: const Icon(Icons.cloud_off_outlined,
@@ -115,7 +115,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(height: 20),
                 const Text('Couldn\'t connect',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 Text(provider.error!,
                     style: TextStyle(
@@ -142,9 +142,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
-    final score = provider.hustleHealthScore;
-    final scoreLabel = provider.healthScoreLabel;
-
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -158,39 +155,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               title: _DashboardHeader(provider: provider),
             ),
             actions: [
-              // Streak badge
-              if (provider.currentStreak >= 2)
-                Padding(
-                  padding: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
-                  child: GestureDetector(
-                    onTap: () => _showStreakDialog(context, provider),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppTheme.amber.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                            color: AppTheme.amber.withOpacity(0.4)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.local_fire_department_outlined,
-                              size: 14, color: AppTheme.amber),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${provider.currentStreak}',
-                            style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.amber),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
               Padding(
                 padding: const EdgeInsets.only(right: 16),
                 child: Image.asset(
@@ -204,66 +168,158 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
 
-          // Summary strip
+          // Hero section
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-              child: Builder(builder: (context) {
-                final thisMonth = provider.thisMonthTotals;
-                final lastMonth = provider.lastMonthTotals;
-                return Row(children: [
-                  Expanded(
-                      child: SummaryCard(
-                          label: 'Income',
-                          value: provider.totalIncome,
-                          symbol: provider.currencySymbol,
-                          trend: provider.monthTrend(
-                              thisMonth['income']!, lastMonth['income']!))),
-                  const SizedBox(width: 8),
-                  Expanded(
-                      child: SummaryCard(
-                          label: 'Expenses',
-                          value: provider.totalExpenses,
-                          symbol: provider.currencySymbol,
-                          trend: provider.monthTrend(
-                              thisMonth['expenses']!, lastMonth['expenses']!))),
-                  const SizedBox(width: 8),
-                  Expanded(
-                      child: SummaryCard(
-                          label: 'Profit',
-                          value: provider.totalProfit,
-                          isProfit: true,
-                          highlight: true,
-                          symbol: provider.currencySymbol,
-                          trend: provider.monthTrend(
-                              thisMonth['profit']!, lastMonth['profit']!))),
-                ]);
-              }),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+              child: _HeroCard(provider: provider),
             ),
           ),
+
+          // ── MAIN section ─────────────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: SectionHeader(
+              title: 'Main',
+              actionLabel: 'Add',
+              onAction: () => provider.canAddStack
+                  ? showCreateStackSheet(context,
+                      initialStackType: provider.salaryStacks.isEmpty
+                          ? StackType.salary
+                          : StackType.budget,
+                      initialIsPersonal: true)
+                  : showPaywallSheet(context),
+            ),
+          ),
+
+          if (provider.mainStacks.isEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: _EmptySection(
+                  icon: Icons.work_outlined,
+                  color: const Color(0xFF2563EB),
+                  title: 'Track your main income',
+                  subtitle: 'Add your salary and regular bills here',
+                  onAdd: () => provider.canAddStack
+                      ? showCreateStackSheet(context,
+                          initialStackType: StackType.salary,
+                          initialIsPersonal: true)
+                      : showPaywallSheet(context),
+                ),
+              ),
+            )
+          else
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, i) {
+                  final stack = provider.mainStacks[i];
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: _StackCard(
+                      stack: stack,
+                      onTap: () => Navigator.push(
+                        context,
+                        PageRouteBuilder(
+                          pageBuilder: (_, __, ___) =>
+                              StackDetailScreen(stackId: stack.id),
+                          transitionsBuilder: (_, anim, __, child) =>
+                              SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0, 0.06),
+                              end: Offset.zero,
+                            ).animate(CurvedAnimation(
+                                parent: anim, curve: Curves.easeOut)),
+                            child: FadeTransition(opacity: anim, child: child),
+                          ),
+                          transitionDuration: const Duration(milliseconds: 280),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                childCount: provider.mainStacks.length,
+              ),
+            ),
+
+          // ── SIDE HUSTLES section ──────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: SectionHeader(
+              title: 'Side Hustles',
+              actionLabel: 'New',
+              onAction: () => provider.canAddStack
+                  ? showCreateStackSheet(context,
+                      initialStackType: StackType.income,
+                      initialIsPersonal: false)
+                  : showPaywallSheet(context),
+            ),
+          ),
+
+          if (provider.sideHustleStacks.isEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: _EmptySection(
+                  icon: Icons.bolt_outlined,
+                  color: const Color(0xFF0D9488),
+                  title: 'No side hustles yet',
+                  subtitle: 'Track freelance, reselling, and extra income streams',
+                  onAdd: () => provider.canAddStack
+                      ? showCreateStackSheet(context,
+                          initialStackType: StackType.income,
+                          initialIsPersonal: false)
+                      : showPaywallSheet(context),
+                ),
+              ),
+            )
+          else
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, i) {
+                  final stack = provider.sideHustleStacks[i];
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: _StackCard(
+                      stack: stack,
+                      onTap: () => Navigator.push(
+                        context,
+                        PageRouteBuilder(
+                          pageBuilder: (_, __, ___) =>
+                              StackDetailScreen(stackId: stack.id),
+                          transitionsBuilder: (_, anim, __, child) =>
+                              SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0, 0.06),
+                              end: Offset.zero,
+                            ).animate(CurvedAnimation(
+                                parent: anim, curve: Curves.easeOut)),
+                            child: FadeTransition(opacity: anim, child: child),
+                          ),
+                          transitionDuration: const Duration(milliseconds: 280),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                childCount: provider.sideHustleStacks.length,
+              ),
+            ),
+
+          // ── Insight cards — below stacks ──────────────────────────────────
 
           // Goal Progress Card (shown when a monthly income goal is set)
           if (provider.goalProgress != null)
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
                 child: _GoalProgressCard(provider: provider),
               ),
             ),
-
-          // This Week strip
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-              child: _ThisWeekStrip(provider: provider),
-            ),
-          ),
 
           // Best Stack Spotlight (only shown when there's a clear leader)
           if (provider.topStackThisMonth != null)
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
                 child: _BestStackSpotlightCard(data: provider.topStackThisMonth!),
               ),
             ),
@@ -272,25 +328,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (provider.totalIncome > 0)
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
                 child: _FyProjectionCard(provider: provider),
               ),
             ),
-
-          // Hustle health score card
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-              child: _HealthScoreCard(
-                  score: score, label: scoreLabel),
-            ),
-          ),
 
           // Tax set-aside card (only shown when profitable)
           if (provider.totalProfit > 0)
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
                 child: _TaxSetAsideCard(
                   profit: provider.totalProfit,
                   rate: provider.taxSetAsideRate,
@@ -299,39 +346,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
 
-          // Demo mode banner (shown when sample data is active)
-          if (provider.isDemoMode)
-            SliverToBoxAdapter(
-              child: _DemoModeBanner(provider: provider),
-            ),
-
           // History lock banner (free users with old transactions)
-          if (!provider.isDemoMode && !provider.canViewFullHistory && provider.hiddenTransactionCount > 0)
+          if (!provider.canViewFullHistory && provider.hiddenTransactionCount > 0)
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
                 child: GestureDetector(
                   onTap: () => showPaywallSheet(context),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     decoration: BoxDecoration(
-                      color: AppTheme.greenDim,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppTheme.green.withOpacity(0.25)),
+                      color: AppTheme.of(context).card,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppTheme.of(context).border),
                     ),
                     child: Row(children: [
-                      const Icon(Icons.lock_open_outlined, size: 14, color: AppTheme.green),
+                      Icon(Icons.lock_open_outlined, size: 14, color: AppTheme.of(context).textSecondary),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           '${provider.hiddenTransactionCount} older transaction${provider.hiddenTransactionCount == 1 ? '' : 's'} hidden — upgrade to see full history',
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: AppTheme.green),
+                              color: AppTheme.of(context).textSecondary),
                         ),
                       ),
-                      const Icon(Icons.arrow_forward_ios, size: 11, color: AppTheme.green),
+                      Icon(Icons.arrow_forward_ios, size: 11, color: AppTheme.of(context).textMuted),
                     ]),
                   ),
                 ),
@@ -341,7 +382,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           // Mileage snapshot card (drives tax deduction awareness)
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
               child: _MileageDashboardCard(),
             ),
           ),
@@ -349,7 +390,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           // Upcoming cash flow peek card
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
               child: _UpcomingPeekCard(provider: provider),
             ),
           ),
@@ -362,72 +403,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
 
-          // Section header
-          SliverToBoxAdapter(
-            child: SectionHeader(
-              title: 'Your Hustles',
-              actionLabel: 'New',
-              onAction: () => provider.canAddStack
-                  ? showCreateStackSheet(context)
-                  : showPaywallSheet(context),
-            ),
-          ),
-
-          // Stack cards (non-archived only)
-          SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, i) => Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: _StackCard(
-                  stack: provider.stacks[i],
-                  onTap: () => Navigator.push(
-                    context,
-                    PageRouteBuilder(
-                      pageBuilder: (_, __, ___) =>
-                          StackDetailScreen(stackId: provider.stacks[i].id),
-                      transitionsBuilder: (_, anim, __, child) =>
-                          SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(0, 0.06),
-                          end: Offset.zero,
-                        ).animate(CurvedAnimation(
-                            parent: anim, curve: Curves.easeOut)),
-                        child: FadeTransition(opacity: anim, child: child),
-                      ),
-                      transitionDuration: const Duration(milliseconds: 280),
-                    ),
-                  ),
-                ),
-              ),
-              childCount: provider.stacks.length,
-            ),
-          ),
-
-          // Customise dashboard — full-width button (QBSE-style, pinned at scroll bottom)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.tune_outlined, size: 16),
-                  label: const Text('Customise dashboard',
-                      style: TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w600)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.accent,
-                    side: BorderSide(
-                        color: AppTheme.accent.withOpacity(0.4), width: 1.5),
-                    backgroundColor: AppTheme.accentDim,
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                  ),
-                  onPressed: () => showInsightsLayoutEditor(context),
-                ),
-              ),
-            ),
-          ),
 
           const SliverToBoxAdapter(child: SizedBox(height: 100)),
         ],
@@ -438,6 +413,308 @@ class _DashboardScreenState extends State<DashboardScreen> {
         foregroundColor: Colors.white,
         elevation: 4,
         child: const Icon(Icons.add, size: 26),
+      ),
+    );
+  }
+}
+
+// ─── Hero card — this-month profit + sparkline ───────────────────────────────
+
+class _HeroCard extends StatelessWidget {
+  final AppProvider provider;
+  const _HeroCard({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppTheme.of(context);
+    final sym = provider.currencySymbol;
+    final thisMonth = provider.thisMonthTotals;
+    final lastMonth = provider.lastMonthTotals;
+    final profit  = thisMonth['profit']!;
+    final income  = thisMonth['income']!;
+    final expenses = thisMonth['expenses']!;
+    final prevProfit = lastMonth['profit']!;
+    final trend = provider.monthTrend(profit, prevProfit);
+    final sparkData = provider.lastNMonthsProfits(6);
+    final profitColor = profit >= 0 ? AppTheme.green : AppTheme.expense;
+    final now = DateTime.now();
+    final monthLabel = _monthName(now.month);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        color: theme.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Top row: profit info (left) + trend badge + sparkline (right)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Left — month label + hero number
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '$monthLabel profit',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: theme.textSecondary,
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${profit < 0 ? '−' : ''}${formatCurrency(profit, sym)}',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: profitColor,
+                        letterSpacing: -0.5,
+                        height: 1.2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Right — trend badge (top) + sparkline (below)
+              SizedBox(
+                width: 96,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (trend != null) ...[
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            trend >= 0
+                                ? Icons.arrow_upward_rounded
+                                : Icons.arrow_downward_rounded,
+                            size: 10,
+                            color: trend >= 0 ? AppTheme.green : AppTheme.expense,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            '${trend.abs().toStringAsFixed(0)}%',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: trend >= 0 ? AppTheme.green : AppTheme.expense,
+                              fontWeight: FontWeight.w600,
+                              height: 1.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                    ] else
+                      const SizedBox(height: 16),
+                    SizedBox(
+                      height: 34,
+                      child: _ProfitSparkline(data: sparkData, color: profitColor),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Income / Expenses chips
+          Row(
+            children: [
+              Expanded(child: _MiniStatChip(
+                label: 'Income',
+                value: formatCurrency(income, sym),
+                color: AppTheme.green,
+              )),
+              const SizedBox(width: 8),
+              Expanded(child: _MiniStatChip(
+                label: 'Expenses',
+                value: formatCurrency(expenses, sym),
+                color: AppTheme.expense,
+              )),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _monthName(int month) {
+    const names = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'];
+    return names[month];
+  }
+}
+
+// ─── Sparkline painter ────────────────────────────────────────────────────────
+
+class _ProfitSparkline extends StatelessWidget {
+  final List<double> data;
+  final Color color;
+  const _ProfitSparkline({required this.data, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    if (data.every((d) => d == 0)) {
+      return SizedBox(
+        height: 40,
+        child: Center(
+          child: Text(
+            'No data yet',
+            style: TextStyle(fontSize: 11, color: AppTheme.of(context).textMuted),
+          ),
+        ),
+      );
+    }
+    return SizedBox(
+      height: 40,
+      child: CustomPaint(
+        painter: _SparklinePainter(
+          data: data,
+          lineColor: color,
+          zeroLineColor: AppTheme.of(context).border,
+        ),
+        size: const Size(double.infinity, 40),
+      ),
+    );
+  }
+}
+
+class _SparklinePainter extends CustomPainter {
+  final List<double> data;
+  final Color lineColor;
+  final Color zeroLineColor;
+
+  const _SparklinePainter({
+    required this.data,
+    required this.lineColor,
+    required this.zeroLineColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (data.length < 2) return;
+
+    final minVal = data.reduce(math.min);
+    final maxVal = data.reduce(math.max);
+    final range = (maxVal - minVal).abs();
+    // Add padding so the line doesn't clip the edges
+    final padded = range == 0 ? 1.0 : range * 1.2;
+    final midY = size.height / 2;
+
+    double toY(double v) {
+      if (range == 0) return midY;
+      final normalised = (v - minVal) / padded;
+      // Invert: high value = low y
+      return size.height - (normalised * size.height) - (size.height * 0.1);
+    }
+
+    final step = size.width / (data.length - 1);
+
+    // Draw zero line if range crosses zero
+    if (minVal < 0 && maxVal > 0) {
+      final zeroY = toY(0);
+      final zeroPaint = Paint()
+        ..color = zeroLineColor
+        ..strokeWidth = 1
+        ..style = PaintingStyle.stroke;
+      canvas.drawLine(Offset(0, zeroY), Offset(size.width, zeroY), zeroPaint);
+    }
+
+    // Build path
+    final path = Path();
+    for (var i = 0; i < data.length; i++) {
+      final x = i * step;
+      final y = toY(data[i]);
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        // Smooth curve using cubic bezier
+        final prevX = (i - 1) * step;
+        final prevY = toY(data[i - 1]);
+        final cpX = (prevX + x) / 2;
+        path.cubicTo(cpX, prevY, cpX, y, x, y);
+      }
+    }
+
+    // Filled area beneath line
+    final fillPath = Path.from(path);
+    final lastX = (data.length - 1) * step;
+    fillPath.lineTo(lastX, size.height);
+    fillPath.lineTo(0, size.height);
+    fillPath.close();
+
+    final fillPaint = Paint()
+      ..color = lineColor.withOpacity(0.08)
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(fillPath, fillPaint);
+
+    // Line
+    final linePaint = Paint()
+      ..color = lineColor
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    canvas.drawPath(path, linePaint);
+
+    // End-point dot
+    final lastY = toY(data.last);
+    final dotPaint = Paint()
+      ..color = lineColor
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(lastX, lastY), 3.5, dotPaint);
+  }
+
+  @override
+  bool shouldRepaint(_SparklinePainter old) =>
+      old.data != data || old.lineColor != lineColor;
+}
+
+// ─── Mini stat chip (income / expenses below sparkline) ──────────────────────
+
+class _MiniStatChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  const _MiniStatChip({required this.label, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppTheme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: theme.cardAlt,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 6, height: 6,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 7),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: TextStyle(fontSize: 11, color: theme.textMuted, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 1),
+              Text(value,
+                  style: TextStyle(fontSize: 13, color: theme.textPrimary, fontWeight: FontWeight.w700)),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -464,17 +741,14 @@ class _DashboardHeader extends StatelessWidget {
         ? (auth.userName ?? '').split(' ').first
         : (app.username ?? (auth.userName ?? '').split(' ').first);
     final greetingName = resolvedName.isNotEmpty ? ', $resolvedName' : '';
-    final hustleTypes = provider.stacks.map((s) => s.hustleType).toSet();
-    final stackLabel = hustleTypes.length == 1
-        ? '${hustleTypes.first.label} Stacks'
-        : 'SideStacks';
+    const stackLabel = 'SideStacks';
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '${_greeting()}$greetingName 👋',
+          '${_greeting()}$greetingName',
           style: TextStyle(
               fontSize: 11,
               color: AppTheme.of(context).textSecondary,
@@ -483,7 +757,7 @@ class _DashboardHeader extends StatelessWidget {
         Text(
           'Your $stackLabel',
           style: TextStyle(
-              fontSize: 20,
+              fontSize: 16,
               fontWeight: FontWeight.w600,
               color: AppTheme.of(context).textPrimary,
               letterSpacing: -0.4),
@@ -507,7 +781,7 @@ void _showStreakDialog(BuildContext context, AppProvider provider) {
           const SizedBox(height: 12),
           Text(
             '${provider.currentStreak}-day streak!',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
@@ -556,7 +830,7 @@ class _ProfileAvatar extends StatelessWidget {
       width: 36,
       height: 36,
       decoration: BoxDecoration(
-        color: AppTheme.accentDim,
+        color: AppTheme.of(context).cardAlt,
         shape: BoxShape.circle,
         border: Border.all(color: AppTheme.accent, width: 1.5),
       ),
@@ -568,7 +842,7 @@ class _ProfileAvatar extends StatelessWidget {
                 errorBuilder: (_, __, ___) => const Center(
                   child: Text('?',
                       style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: AppTheme.accent)),
                 ),
@@ -623,34 +897,33 @@ class _HealthScoreCardState extends State<_HealthScoreCard> {
         curve: Curves.easeInOut,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
+          color: AppTheme.of(context).card,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.25)),
+          border: Border.all(color: AppTheme.of(context).border),
         ),
         child: Column(
           children: [
             Row(children: [
-              Icon(_icon, size: 22, color: _color),
+              Icon(_icon, size: 22, color: AppTheme.of(context).textSecondary),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'HUSTLE HEALTH',
+                      'Hustle health',
                       style: TextStyle(
-                          fontSize: 8,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: color.withOpacity(0.7),
-                          letterSpacing: 1.0),
+                          color: AppTheme.of(context).textMuted),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       widget.label,
                       style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: color),
+                          color: AppTheme.of(context).textPrimary),
                     ),
                   ],
                 ),
@@ -672,7 +945,6 @@ class _HealthScoreCardState extends State<_HealthScoreCard> {
                     Text(
                       widget.score.toStringAsFixed(0),
                       style: TextStyle(
-                          fontFamily: 'Courier',
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: color),
@@ -685,7 +957,7 @@ class _HealthScoreCardState extends State<_HealthScoreCard> {
                 turns: _expanded ? 0.5 : 0,
                 duration: const Duration(milliseconds: 220),
                 child: Icon(Icons.expand_more,
-                    size: 18, color: color.withOpacity(0.7)),
+                    size: 18, color: AppTheme.of(context).textMuted),
               ),
             ]),
 
@@ -731,7 +1003,7 @@ class _HealthScoreCardState extends State<_HealthScoreCard> {
                 child: Text(
                   'Tap to collapse',
                   style: TextStyle(
-                      fontSize: 10, color: color.withOpacity(0.5)),
+                      fontSize: 11, color: color.withOpacity(0.5)),
                 ),
               ),
             ],
@@ -794,7 +1066,7 @@ class _ScoreRow extends StatelessWidget {
         const SizedBox(height: 3),
         Text(tip,
             style: TextStyle(
-                fontSize: 10,
+                fontSize: 11,
                 color: AppTheme.of(context).textMuted)),
       ],
     );
@@ -810,232 +1082,253 @@ class _StackCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
-    final symbol = provider.currencySymbol;
-    final isPremium = provider.isPremium;
+    final symbol = context.watch<AppProvider>().currencySymbol;
+    switch (stack.stackType) {
+      case StackType.budget:  return _BudgetStackCard(stack: stack, symbol: symbol, onTap: onTap);
+      case StackType.savings: return _SavingsStackCard(stack: stack, symbol: symbol, onTap: onTap);
+      case StackType.income:  return _IncomeStackCard(stack: stack, symbol: symbol, onTap: onTap);
+      case StackType.salary:  return _SalaryStackCard(stack: stack, symbol: symbol, onTap: onTap);
+    }
+  }
+}
 
-    Widget card = Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppTheme.of(context).card,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppTheme.of(context).border),
+// Income card — original design
+class _IncomeStackCard extends StatelessWidget {
+  final SideStack stack;
+  final String symbol;
+  final VoidCallback onTap;
+  const _IncomeStackCard({required this.stack, required this.symbol, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        decoration: BoxDecoration(
+          color: AppTheme.of(context).card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.of(context).border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Container(
+                width: 38, height: 38,
+                decoration: BoxDecoration(
+                    color: AppTheme.of(context).cardAlt,
+                    borderRadius: BorderRadius.circular(10)),
+                child: Center(child: Icon(stack.hustleType.icon, size: 20,
+                    color: AppTheme.of(context).textSecondary)),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(stack.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  if (stack.description != null)
+                    Text(stack.description!,
+                        style: TextStyle(fontSize: 11, color: AppTheme.of(context).textSecondary),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                ]),
+              ),
+              Icon(Icons.chevron_right, size: 18, color: AppTheme.of(context).textMuted),
+            ]),
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(child: StackMetricTile(label: 'Revenue', value: formatCurrency(stack.totalIncome, symbol))),
+              const SizedBox(width: 6),
+              Expanded(child: StackMetricTile(
+                  label: 'Profit',
+                  value: formatCurrency(stack.netProfit, symbol),
+                  valueColor: stack.netProfit >= 0 ? AppTheme.green : AppTheme.expense)),
+              const SizedBox(width: 6),
+              if (stack.effectiveHourlyRate != null)
+                Expanded(child: StackMetricTile(
+                    label: '\$/hr',
+                    value: '$symbol${stack.effectiveHourlyRate!.toStringAsFixed(0)}',
+                    valueColor: AppTheme.accent))
+              else
+                Expanded(child: StackMetricTile(
+                    label: 'Margin',
+                    value: formatPercent(stack.profitMargin),
+                    valueColor: stack.profitMargin >= 0 ? AppTheme.green : AppTheme.expense)),
+            ]),
+          ],
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    );
+  }
+}
+
+// Budget card — spend vs monthly limit
+class _BudgetStackCard extends StatelessWidget {
+  final SideStack stack;
+  final String symbol;
+  final VoidCallback onTap;
+  const _BudgetStackCard({required this.stack, required this.symbol, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    const color = Color(0xFF6366F1); // indigo
+    final fraction = stack.budgetUsedFraction.clamp(0.0, 1.0);
+    final isOver = stack.isOverBudget;
+    final barColor = isOver ? AppTheme.expense : color;
+    final hasLimit = stack.monthlyBudget != null && stack.monthlyBudget! > 0;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        decoration: BoxDecoration(
+          color: AppTheme.of(context).card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isOver ? AppTheme.expense.withOpacity(0.5) : AppTheme.of(context).border,
+          ),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Container(
               width: 38, height: 38,
               decoration: BoxDecoration(
-                  color: AppTheme.of(context).cardAlt,
-                  borderRadius: BorderRadius.circular(10)),
-              child: Center(
-                  child: Icon(stack.hustleType.icon, size: 20,
-                      color: AppTheme.of(context).textSecondary)),
+                  color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+              child: const Center(child: Icon(Icons.account_balance_wallet_outlined, size: 20, color: Color(0xFF6366F1))),
             ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(stack.name,
-                        style: TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w600)),
-                    if (stack.description != null)
-                      Text(stack.description!,
-                          style: TextStyle(
-                              fontSize: 11,
-                              color: AppTheme.of(context).textSecondary),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right,
-                  size: 18, color: AppTheme.of(context).textMuted),
-            ]),
-            const SizedBox(height: 12),
+            const SizedBox(width: 10),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(stack.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+              Text('Budget', style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w500)),
+            ])),
+            Icon(Icons.chevron_right, size: 18, color: AppTheme.of(context).textMuted),
+          ]),
+          const SizedBox(height: 12),
+          if (hasLimit) ...[
             Row(children: [
-              Expanded(
-                  child: StackMetricTile(
-                      label: 'Revenue',
-                      value: formatCurrency(stack.totalIncome, symbol))),
-              const SizedBox(width: 6),
-              Expanded(
-                  child: StackMetricTile(
-                      label: 'Expenses',
-                      value: formatCurrency(stack.totalExpenses, symbol))),
-              const SizedBox(width: 6),
-              Expanded(
-                  child: StackMetricTile(
-                      label: 'Profit',
-                      value: formatCurrency(stack.netProfit, symbol),
-                      valueColor: stack.netProfit >= 0
-                          ? AppTheme.green
-                          : AppTheme.red)),
-              const SizedBox(width: 6),
-              // Show $/hr when hours have been logged; otherwise show margin
-              if (stack.effectiveHourlyRate != null)
-                Expanded(
-                    child: StackMetricTile(
-                        label: '\$/hr',
-                        value: '${symbol}${stack.effectiveHourlyRate!.toStringAsFixed(0)}',
-                        valueColor: AppTheme.accent))
-              else
-                Expanded(
-                    child: StackMetricTile(
-                        label: 'Margin',
-                        value: formatPercent(stack.profitMargin),
-                        valueColor: stack.profitMargin >= 0
-                            ? AppTheme.green
-                            : AppTheme.red)),
-            ]),
-            // ── This-month strip ─────────────────────────────────────────
-            const SizedBox(height: 10),
-            _ThisMonthStrip(stack: stack, symbol: symbol),
-
-            if (stack.goalAmount != null) ...[
-              const SizedBox(height: 8),
-              Row(children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: stack.goalProgress,
-                      backgroundColor: AppTheme.of(context).cardAlt,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        stack.goalProgress >= 1.0
-                            ? AppTheme.green
-                            : AppTheme.accent,
-                      ),
-                      minHeight: 4,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '${(stack.goalProgress * 100).toStringAsFixed(0)}% of ${formatCurrency(stack.goalAmount!, symbol)} goal',
-                  style: TextStyle(
-                      fontSize: 9,
-                      color: AppTheme.of(context).textMuted,
-                      fontWeight: FontWeight.w500),
-                ),
-              ]),
-            ],
-
-            // ── Goal pace message ────────────────────────────────────────
-            if (stack.goalPaceMessage(symbol) != null) ...[
-              const SizedBox(height: 6),
               Text(
-                stack.goalPaceMessage(symbol)!,
-                style: TextStyle(
-                    fontSize: 10,
-                    color: stack.goalPaceRatio != null && stack.goalPaceRatio! >= 1.0
-                        ? AppTheme.green
-                        : AppTheme.amber,
-                    fontWeight: FontWeight.w600),
+                '${symbol}${stack.thisMonthSpend.toStringAsFixed(0)}',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
+                    color: isOver ? AppTheme.expense : AppTheme.of(context).textPrimary),
               ),
-            ],
+              Text(
+                ' / ${symbol}${stack.monthlyBudget!.toStringAsFixed(0)}',
+                style: TextStyle(fontSize: 13, color: AppTheme.of(context).textMuted),
+              ),
+              const Spacer(),
+              Text(
+                isOver
+                    ? '${symbol}${stack.thisMonthSpend - stack.monthlyBudget! > 0 ? (stack.thisMonthSpend - stack.monthlyBudget!).toStringAsFixed(0) : "0"} over'
+                    : '${symbol}${stack.budgetRemaining.toStringAsFixed(0)} left',
+                style: TextStyle(
+                    fontSize: 11, fontWeight: FontWeight.w600,
+                    color: isOver ? AppTheme.expense : AppTheme.green),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: fraction,
+                minHeight: 6,
+                backgroundColor: barColor.withOpacity(0.12),
+                valueColor: AlwaysStoppedAnimation<Color>(barColor),
+              ),
+            ),
+          ] else ...[
+            Row(children: [
+              Expanded(child: StackMetricTile(label: 'Spent this month', value: formatCurrency(stack.thisMonthSpend, symbol))),
+              const SizedBox(width: 6),
+              Expanded(child: StackMetricTile(label: 'All time', value: formatCurrency(stack.totalExpenses, symbol))),
+            ]),
           ],
-        ),
-    );
-
-    return GestureDetector(
-      onTap: onTap,
-      child: card,
+        ]),
+      ),
     );
   }
 }
 
-// ─── This-Month Strip (on stack card) ────────────────────────────────────────
-
-class _ThisMonthStrip extends StatelessWidget {
+// Savings card — saved vs target
+class _SavingsStackCard extends StatelessWidget {
   final SideStack stack;
   final String symbol;
-  const _ThisMonthStrip({required this.stack, required this.symbol});
+  final VoidCallback onTap;
+  const _SavingsStackCard({required this.stack, required this.symbol, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-    // This month income
-    final thisMonthIncome = stack.thisMonthIncome;
+    const color = Color(0xFFF59E0B); // amber
+    final hasTarget = stack.savingsTarget != null && stack.savingsTarget! > 0;
+    final fraction = stack.savingsProgress.clamp(0.0, 1.0);
+    final done = fraction >= 1.0;
 
-    // Last month income for trend
-    final lastMonthIncome = stack.transactions
-        .where((t) =>
-            t.type == TransactionType.income &&
-            t.date.year == (now.month == 1 ? now.year - 1 : now.year) &&
-            t.date.month == (now.month == 1 ? 12 : now.month - 1))
-        .fold(0.0, (s, t) => s + t.amount);
-
-    // This month expenses
-    final thisMonthExpenses = stack.transactions
-        .where((t) =>
-            t.type == TransactionType.expense &&
-            t.date.year == now.year &&
-            t.date.month == now.month)
-        .fold(0.0, (s, t) => s + t.amount);
-
-    final trend = lastMonthIncome > 0
-        ? ((thisMonthIncome - lastMonthIncome) / lastMonthIncome * 100)
-        : null;
-
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    final label = months[now.month - 1];
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: AppTheme.of(context).cardAlt,
-        borderRadius: BorderRadius.circular(10),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        decoration: BoxDecoration(
+          color: AppTheme.of(context).card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: done ? color.withOpacity(0.5) : AppTheme.of(context).border,
+          ),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Container(
+              width: 38, height: 38,
+              decoration: BoxDecoration(
+                  color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+              child: Center(child: Icon(done ? Icons.check_circle_outline : Icons.savings_outlined,
+                  size: 20, color: color)),
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(stack.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+              Text('Savings Goal', style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w500)),
+            ])),
+            Icon(Icons.chevron_right, size: 18, color: AppTheme.of(context).textMuted),
+          ]),
+          const SizedBox(height: 12),
+          if (hasTarget) ...[
+            Row(children: [
+              Text(
+                '${symbol}${stack.totalSaved.toStringAsFixed(0)}',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
+                    color: done ? color : AppTheme.of(context).textPrimary),
+              ),
+              Text(
+                ' / ${symbol}${stack.savingsTarget!.toStringAsFixed(0)}',
+                style: TextStyle(fontSize: 13, color: AppTheme.of(context).textMuted),
+              ),
+              const Spacer(),
+              Text(
+                done ? 'Goal reached! 🎉' : '${(fraction * 100).toStringAsFixed(0)}% there',
+                style: TextStyle(
+                    fontSize: 11, fontWeight: FontWeight.w600,
+                    color: done ? color : AppTheme.of(context).textSecondary),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: fraction,
+                minHeight: 6,
+                backgroundColor: color.withOpacity(0.12),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+              ),
+            ),
+          ] else ...[
+            Row(children: [
+              Expanded(child: StackMetricTile(label: 'Total saved', value: formatCurrency(stack.totalSaved, symbol))),
+            ]),
+          ],
+        ]),
       ),
-      child: Row(children: [
-        Text(
-          '$label income',
-          style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.of(context).textMuted),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          formatCurrency(thisMonthIncome, symbol),
-          style: TextStyle(
-              fontFamily: 'Courier',
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.green),
-        ),
-        if (trend != null) ...[
-          const SizedBox(width: 4),
-          Icon(
-            trend >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
-            size: 10,
-            color: trend >= 0 ? AppTheme.green : AppTheme.red,
-          ),
-          Text(
-            '${trend.abs().toStringAsFixed(0)}%',
-            style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-                color: trend >= 0 ? AppTheme.green : AppTheme.red),
-          ),
-        ],
-        const Spacer(),
-        Text(
-          'spent ${formatCurrency(thisMonthExpenses, symbol)}',
-          style: TextStyle(
-              fontSize: 10,
-              color: AppTheme.of(context).textMuted),
-        ),
-      ]),
     );
   }
 }
+
 
 // ─── Upcoming Peek Card ───────────────────────────────────────────────────────
 
@@ -1069,12 +1362,11 @@ class _UpcomingPeekCard extends StatelessWidget {
               const Icon(Icons.account_balance_wallet_outlined, size: 14, color: AppTheme.accent),
               const SizedBox(width: 7),
               Text(
-                'UPCOMING',
+                'Upcoming',
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.of(context).textMuted,
-                  letterSpacing: 0.8,
                 ),
               ),
               const Spacer(),
@@ -1106,14 +1398,14 @@ class _UpcomingPeekCard extends StatelessWidget {
                           ? AppTheme.red
                           : isIncome
                               ? AppTheme.green
-                              : AppTheme.red,
+                              : AppTheme.expense,
                     ),
                   ),
                   Expanded(
                     child: Text(
                       e.label,
                       style: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w500),
+                          fontSize: 13, fontWeight: FontWeight.w500),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1131,10 +1423,9 @@ class _UpcomingPeekCard extends StatelessWidget {
                   Text(
                     '${isIncome ? '+' : '-'}${formatCurrency(e.amount, sym)}',
                     style: TextStyle(
-                      fontFamily: 'Courier',
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: isIncome ? AppTheme.green : AppTheme.red,
+                      color: isIncome ? AppTheme.green : AppTheme.expense,
                     ),
                   ),
                 ]),
@@ -1166,7 +1457,7 @@ class _MileageDashboardCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mileage = context.watch<MileageProvider>();
-    const purple = Color(0xFF8B5CF6);
+    const purple = AppTheme.accent;
     const kKmPerMile = 1.60934;
     const kRatePerMile = 0.45;
 
@@ -1182,42 +1473,8 @@ class _MileageDashboardCard extends StatelessWidget {
     final miles = yearTrips.fold(0.0, (s, t) => s + t.distanceKm / kKmPerMile);
     final deduction = miles * kRatePerMile;
 
-    // Empty state — still show the card as a prompt
-    if (yearTrips.isEmpty) {
-      return GestureDetector(
-        onTap: () => showMileageScreen(context),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: purple.withOpacity(0.07),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: purple.withOpacity(0.2)),
-          ),
-          child: Row(children: [
-            const Icon(Icons.directions_car_outlined, size: 18, color: AppTheme.accent),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Save on taxes while you drive for work.',
-                style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: purple),
-              ),
-            ),
-            Text(
-              'Log trip',
-              style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: purple),
-            ),
-            const SizedBox(width: 2),
-            const Icon(Icons.chevron_right, size: 14, color: purple),
-          ]),
-        ),
-      );
-    }
+    // Empty state — hide the card until first trip is logged
+    if (yearTrips.isEmpty) return const SizedBox.shrink();
 
     // Active state — show this-year summary
     return GestureDetector(
@@ -1225,32 +1482,38 @@ class _MileageDashboardCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: BoxDecoration(
-          color: purple.withOpacity(0.07),
+          color: AppTheme.of(context).card,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: purple.withOpacity(0.2)),
+          border: Border.all(color: AppTheme.of(context).border),
         ),
         child: Row(children: [
-          const Icon(Icons.directions_car_outlined, size: 18, color: AppTheme.accent),
+          Icon(Icons.directions_car_outlined, size: 18, color: AppTheme.of(context).textSecondary),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'MILEAGE THIS TAX YEAR',
+                  'Mileage this tax year',
                   style: TextStyle(
-                      fontSize: 8,
+                      fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      letterSpacing: 0.7,
-                      color: purple.withOpacity(0.6)),
+                      color: AppTheme.of(context).textMuted),
                 ),
                 const SizedBox(height: 1),
                 Text(
                   '${miles.toStringAsFixed(0)} miles · £${deduction.toStringAsFixed(0)} deduction',
-                  style: const TextStyle(
-                      fontSize: 12,
+                  style: TextStyle(
+                      fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: purple),
+                      color: AppTheme.of(context).textPrimary),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  'Est. at HMRC 45p/mile rate.',
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: AppTheme.of(context).textMuted),
                 ),
               ],
             ),
@@ -1258,19 +1521,19 @@ class _MileageDashboardCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: purple.withOpacity(0.12),
+              color: AppTheme.of(context).cardAlt,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
               '${yearTrips.length} trip${yearTrips.length == 1 ? '' : 's'}',
-              style: const TextStyle(
-                  fontSize: 10,
+              style: TextStyle(
+                  fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: purple),
+                  color: AppTheme.of(context).textSecondary),
             ),
           ),
           const SizedBox(width: 4),
-          const Icon(Icons.chevron_right, size: 14, color: purple),
+          Icon(Icons.chevron_right, size: 14, color: AppTheme.of(context).textSecondary),
         ]),
       ),
     );
@@ -1321,14 +1584,14 @@ class _QuickActionsRow extends StatelessWidget {
           _QuickAction(
             icon: Icons.add_circle_outline,
             label: 'Add Income',
-            color: AppTheme.green,
-            onTap: () => showAddTransactionSheet(context),
+            color: AppTheme.accent,
+            onTap: () => showAddTransactionSheet(context, initialType: TransactionType.income),
           ),
           const SizedBox(width: 8),
           _QuickAction(
             icon: Icons.layers_outlined,
             label: 'New Stack',
-            color: AppTheme.amber,
+            color: AppTheme.accent,
             onTap: () => provider.canAddStack
                 ? showCreateStackSheet(context)
                 : showPaywallSheet(context),
@@ -1337,28 +1600,28 @@ class _QuickActionsRow extends StatelessWidget {
           _QuickAction(
             icon: Icons.waterfall_chart_outlined,
             label: 'Cash Flow',
-            color: const Color(0xFF0EA5E9),
+            color: AppTheme.accent,
             onTap: () => showCashFlowScreen(context),
           ),
           const SizedBox(width: 8),
           _QuickAction(
             icon: Icons.directions_car_outlined,
             label: 'Mileage',
-            color: const Color(0xFF8B5CF6),
+            color: AppTheme.accent,
             onTap: () => showMileageScreen(context),
           ),
           const SizedBox(width: 8),
           _QuickAction(
             icon: Icons.calculate_outlined,
             label: 'Rate Check',
-            color: const Color(0xFF0EA5E9),
+            color: AppTheme.accent,
             onTap: () => showRateComparatorScreen(context),
           ),
           const SizedBox(width: 8),
           _QuickAction(
             icon: Icons.flag_outlined,
             label: provider.monthlyIncomeGoal != null ? 'Edit Goal' : 'Set Goal',
-            color: AppTheme.green,
+            color: AppTheme.accent,
             onTap: () => _showGoalDialog(context, provider),
           ),
         ],
@@ -1382,35 +1645,20 @@ class _EmptyDashboard extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Hero icon
-              Container(
-                width: 88,
-                height: 88,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF0EA5E9), Color(0xFF0284C7)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF0EA5E9).withOpacity(0.3),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    )
-                  ],
-                ),
-                child: const Center(
-                  child: Icon(Icons.bolt_outlined, size: 44, color: Colors.white),
-                ),
+              // Logo
+              Image.asset(
+                Theme.of(context).brightness == Brightness.dark
+                    ? 'assets/logo_white.png'
+                    : 'assets/logo_navy.png',
+                width: 160,
+                fit: BoxFit.contain,
               ),
               const SizedBox(height: 28),
 
               const Text(
                 'Still guessing what\nyou actually make?',
                 style: TextStyle(
-                  fontSize: 26,
+                  fontSize: 24,
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.5,
                   height: 1.2,
@@ -1421,7 +1669,7 @@ class _EmptyDashboard extends StatelessWidget {
               Text(
                 'SideStacks shows your real profit across every hustle. Not just revenue.',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 13,
                   color: AppTheme.of(context).textSecondary,
                   height: 1.5,
                 ),
@@ -1434,45 +1682,19 @@ class _EmptyDashboard extends StatelessWidget {
                 label: 'Create my first SideStack',
                 onPressed: () => showCreateStackSheet(context),
               ),
-              const SizedBox(height: 12),
-
-              // Demo mode CTA
-              GestureDetector(
-                onTap: () => provider.enterDemoMode(),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  decoration: BoxDecoration(
-                    color: AppTheme.of(context).card,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppTheme.of(context).border),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.play_circle_outline,
-                          size: 16,
-                          color: AppTheme.of(context).textSecondary),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Try demo with sample data',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.of(context).textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               Text(
-                'No account required to explore',
+                provider.isInTrial
+                    ? '${provider.trialDaysRemaining} day${provider.trialDaysRemaining == 1 ? '' : 's'} remaining on your free trial'
+                    : 'Free to start — upgrade anytime for unlimited stacks',
                 style: TextStyle(
-                  fontSize: 11,
-                  color: AppTheme.of(context).textMuted,
+                  fontSize: 13,
+                  color: provider.isInTrial
+                      ? AppTheme.accent
+                      : AppTheme.of(context).textMuted,
+                  fontWeight: provider.isInTrial ? FontWeight.w600 : FontWeight.w400,
                 ),
+                textAlign: TextAlign.center,
               ),
             ],
           ),
@@ -1514,31 +1736,20 @@ class _TaxSetAsideCard extends StatelessWidget {
           Row(
             children: [
               // Shield icon in green-dim circle
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: AppTheme.greenDim,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.shield_outlined,
-                    size: 16,
-                    color: AppTheme.green,
-                  ),
-                ),
+              const Icon(
+                Icons.shield_outlined,
+                size: 20,
+                color: AppTheme.green,
               ),
               const SizedBox(width: 10),
               // Label
               Expanded(
                 child: Text(
-                  'TAX SET-ASIDE',
+                  'Tax set-aside',
                   style: TextStyle(
-                    fontSize: 8,
+                    fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.of(context).textMuted,
-                    letterSpacing: 1.0,
                   ),
                 ),
               ),
@@ -1546,7 +1757,6 @@ class _TaxSetAsideCard extends StatelessWidget {
               Text(
                 '$symbol${setAsideAmount.toStringAsFixed(2)}',
                 style: const TextStyle(
-                  fontFamily: 'Courier',
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.green,
@@ -1581,50 +1791,297 @@ class _TaxSetAsideCard extends StatelessWidget {
   }
 }
 
-// ─── Demo Mode Banner ─────────────────────────────────────────────────────────
+// ─── Trial Banner ─────────────────────────────────────────────────────────────
 
-class _DemoModeBanner extends StatelessWidget {
+class _TrialBanner extends StatelessWidget {
   final AppProvider provider;
-  const _DemoModeBanner({required this.provider});
+  const _TrialBanner({required this.provider});
 
   @override
   Widget build(BuildContext context) {
+    final days = provider.trialDaysRemaining;
     return GestureDetector(
-      onTap: () => showCreateStackSheet(context),
+      onTap: () => showPaywallSheet(context),
       child: Container(
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: AppTheme.amber.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppTheme.amber.withOpacity(0.3)),
+          color: AppTheme.of(context).card,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppTheme.of(context).border),
         ),
         child: Row(
           children: [
-            const Text('🧪', style: TextStyle(fontSize: 16)),
+            const Text('⏳', style: TextStyle(fontSize: 16)),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'You\'re viewing sample data',
+                  Text(
+                    days == 1
+                        ? 'Last day of your free trial'
+                        : '$days days left in your free trial',
                     style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.amber),
+                        color: AppTheme.of(context).textPrimary),
                   ),
                   Text(
-                    'Tap to create your first real SideStack',
+                    'Tap to subscribe and keep unlimited access',
                     style: TextStyle(
                         fontSize: 11,
-                        color: AppTheme.amber.withOpacity(0.8)),
+                        color: AppTheme.of(context).textSecondary),
                   ),
                 ],
               ),
             ),
             Icon(Icons.arrow_forward_ios,
-                size: 12, color: AppTheme.amber.withOpacity(0.7)),
+                size: 12, color: AppTheme.of(context).textMuted),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Salary Stack Card ────────────────────────────────────────────────────────
+
+class _SalaryStackCard extends StatelessWidget {
+  final SideStack stack;
+  final String symbol;
+  final VoidCallback onTap;
+  const _SalaryStackCard(
+      {required this.stack, required this.symbol, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppTheme.of(context);
+    const blue = Color(0xFF2563EB);
+    final thisMonth = stack.thisMonthIncome;
+    final ytd = stack.ytdIncome;
+    final paychecksThisMonth = stack.transactions
+        .where((t) =>
+            t.type == TransactionType.income &&
+            t.date.year == DateTime.now().year &&
+            t.date.month == DateTime.now().month)
+        .length;
+    final paidThisMonth = paychecksThisMonth > 0;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        decoration: BoxDecoration(
+          color: theme.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: theme.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header row
+            Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.work_outlined,
+                      size: 17, color: blue),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        stack.name,
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: theme.textPrimary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (stack.description != null)
+                        Text(
+                          stack.description!,
+                          style: TextStyle(
+                              fontSize: 11, color: theme.textSecondary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                    ],
+                  ),
+                ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: const Text(
+                        'SALARY',
+                        style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: blue,
+                            letterSpacing: 0.5),
+                      ),
+                    ),
+                    if (paidThisMonth) ...[
+                      const SizedBox(width: 6),
+                      const Icon(Icons.check_circle,
+                          size: 14, color: Color(0xFF16A34A)),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Stats row
+            Row(
+              children: [
+                Expanded(
+                  child: _SalaryStatCell(
+                    label: 'This month',
+                    value: formatCurrency(thisMonth, symbol),
+                    color: thisMonth > 0 ? blue : theme.textMuted,
+                  ),
+                ),
+                Container(width: 1, height: 32, color: theme.border),
+                Expanded(
+                  child: _SalaryStatCell(
+                    label: 'Year to date',
+                    value: formatCurrency(ytd, symbol),
+                    color: theme.textPrimary,
+                  ),
+                ),
+                Container(width: 1, height: 32, color: theme.border),
+                Expanded(
+                  child: _SalaryStatCell(
+                    label: 'Paychecks',
+                    value: paychecksThisMonth == 0
+                        ? 'None yet'
+                        : '$paychecksThisMonth this month',
+                    color: theme.textSecondary,
+                    small: true,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SalaryStatCell extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  final bool small;
+  const _SalaryStatCell(
+      {required this.label,
+      required this.value,
+      required this.color,
+      this.small = false});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.of(context).textMuted),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: small ? 11 : 14,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      );
+}
+
+// ─── Empty Section placeholder ────────────────────────────────────────────────
+
+class _EmptySection extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String subtitle;
+  final VoidCallback onAdd;
+  const _EmptySection({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+    required this.onAdd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppTheme.of(context);
+    return GestureDetector(
+      onTap: onAdd,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: theme.card,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+              color: color.withOpacity(0.3), style: BorderStyle.solid),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 18, color: color),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: theme.textPrimary)),
+                  const SizedBox(height: 2),
+                  Text(subtitle,
+                      style: TextStyle(
+                          fontSize: 11, color: theme.textSecondary)),
+                ],
+              ),
+            ),
+            Icon(Icons.add_circle_outline, size: 18, color: color),
           ],
         ),
       ),
@@ -1670,7 +2127,7 @@ class _GoalProgressCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: theme.card,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: barColor.withOpacity(0.3)),
+          border: Border.all(color: theme.border),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1682,12 +2139,11 @@ class _GoalProgressCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        done ? 'Goal smashed!' : 'Monthly target',
+                        done ? 'Target reached.' : 'Monthly target',
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color: barColor,
-                          letterSpacing: 0.2,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -1696,10 +2152,10 @@ class _GoalProgressCard extends StatelessWidget {
                           TextSpan(
                             text: '$sym${earned.toStringAsFixed(0)}',
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: 16,
                               fontWeight: FontWeight.w800,
                               color: theme.textPrimary,
-                              fontFamily: 'Arial',
+                              fontFamily: 'Sora',
                             ),
                           ),
                           TextSpan(
@@ -1708,7 +2164,7 @@ class _GoalProgressCard extends StatelessWidget {
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
                               color: theme.textSecondary,
-                              fontFamily: 'Arial',
+                              fontFamily: 'Sora',
                             ),
                           ),
                         ]),
@@ -1722,7 +2178,7 @@ class _GoalProgressCard extends StatelessWidget {
                     Text(
                       '$pct%',
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 16,
                         fontWeight: FontWeight.w800,
                         color: barColor,
                         letterSpacing: -0.5,
@@ -1735,7 +2191,7 @@ class _GoalProgressCard extends StatelessWidget {
                               ? 'Last day'
                               : '$daysLeft days left',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 11,
                         color: theme.textSecondary,
                       ),
                     ),
@@ -1759,7 +2215,7 @@ class _GoalProgressCard extends StatelessWidget {
               Text(
                 '$sym${remaining.toStringAsFixed(0)} to go',
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 11,
                   color: theme.textSecondary,
                   fontWeight: FontWeight.w500,
                 ),
@@ -1785,7 +2241,7 @@ void _showGoalDialog(BuildContext context, AppProvider provider) {
       backgroundColor: theme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text('Monthly Income Target',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1865,7 +2321,7 @@ class _FyProjectionCard extends StatelessWidget {
         ? AppTheme.accent
         : aboveLastFy
             ? AppTheme.green
-            : AppTheme.red;
+            : AppTheme.expense;
 
     final now = DateTime.now();
     final fyLabel = now.month >= 7
@@ -1877,7 +2333,7 @@ class _FyProjectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.card,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.accent.withOpacity(0.15)),
+        border: Border.all(color: theme.border),
       ),
       child: Row(
         children: [
@@ -1885,11 +2341,13 @@ class _FyProjectionCard extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: AppTheme.accent.withOpacity(0.12),
+              color: AppTheme.of(context).cardAlt,
               borderRadius: BorderRadius.circular(9),
             ),
-            child: const Icon(Icons.rocket_launch_outlined,
-                size: 18, color: AppTheme.accent),
+            child: Center(
+              child: Icon(Icons.rocket_launch_outlined,
+                  size: 18, color: AppTheme.of(context).textSecondary),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1899,20 +2357,27 @@ class _FyProjectionCard extends StatelessWidget {
                 Text(
                   'On pace for $fyLabel',
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: theme.textSecondary,
-                    letterSpacing: 0.2,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '$sym${_fmt(projection)}',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.w800,
                     color: theme.textPrimary,
                     letterSpacing: -0.4,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Based on monthly average to date.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: theme.textMuted,
                   ),
                 ),
               ],
@@ -1922,7 +2387,7 @@ class _FyProjectionCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: trendColor.withOpacity(0.12),
+                color: AppTheme.of(context).cardAlt,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -1939,7 +2404,7 @@ class _FyProjectionCard extends StatelessWidget {
                   Text(
                     '${aboveLastFy ? '+' : ''}$growthPct% vs last FY',
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color: trendColor,
                     ),
@@ -1950,7 +2415,7 @@ class _FyProjectionCard extends StatelessWidget {
           else
             Text(
               'First year — keep going!',
-              style: TextStyle(fontSize: 10, color: theme.textSecondary),
+              style: TextStyle(fontSize: 11, color: theme.textSecondary),
             ),
         ],
       ),
@@ -1987,7 +2452,7 @@ class _BestStackSpotlightCard extends StatelessWidget {
         ? theme.textSecondary
         : growthPositive
             ? AppTheme.green
-            : AppTheme.red;
+            : AppTheme.expense;
     final growthIcon = growth == null
         ? null
         : growthPositive
@@ -2000,16 +2465,9 @@ class _BestStackSpotlightCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppTheme.accent.withOpacity(0.12),
-            AppTheme.accent.withOpacity(0.04),
-          ],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
+        color: AppTheme.of(context).card,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.accent.withOpacity(0.25)),
+        border: Border.all(color: AppTheme.of(context).border),
       ),
       child: Row(
         children: [
@@ -2018,11 +2476,11 @@ class _BestStackSpotlightCard extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppTheme.accent.withOpacity(0.15),
+              color: AppTheme.of(context).cardAlt,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Center(
-              child: Icon(stack.hustleType.icon, size: 20, color: AppTheme.accent),
+              child: Icon(stack.hustleType.icon, size: 20, color: AppTheme.of(context).textSecondary),
             ),
           ),
           const SizedBox(width: 12),
@@ -2034,17 +2492,16 @@ class _BestStackSpotlightCard extends StatelessWidget {
                 Text(
                   'Top hustle this month',
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.accent,
-                    letterSpacing: 0.2,
+                    color: AppTheme.of(context).textSecondary,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   stack.name,
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: theme.textPrimary,
                     letterSpacing: -0.2,
@@ -2063,7 +2520,7 @@ class _BestStackSpotlightCard extends StatelessWidget {
               Text(
                 '$sym${income.toStringAsFixed(0)}',
                 style: TextStyle(
-                  fontSize: 17,
+                  fontSize: 16,
                   fontWeight: FontWeight.w800,
                   color: theme.textPrimary,
                   letterSpacing: -0.4,
@@ -2079,7 +2536,7 @@ class _BestStackSpotlightCard extends StatelessWidget {
                   Text(
                     growthText,
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
                       color: growthColor,
                     ),
@@ -2093,166 +2550,6 @@ class _BestStackSpotlightCard extends StatelessWidget {
     );
   }
 }
-
-// ─── This Week Strip ─────────────────────────────────────────────────────────
-
-class _ThisWeekStrip extends StatelessWidget {
-  final AppProvider provider;
-  const _ThisWeekStrip({required this.provider});
-
-  @override
-  Widget build(BuildContext context) {
-    final now = DateTime.now();
-    // Monday of the current week
-    final weekStartDate = DateTime(
-        now.year, now.month, now.day - (now.weekday - 1));
-    final lastWeekStartDate =
-        weekStartDate.subtract(const Duration(days: 7));
-
-    final allTx = provider.allTransactions;
-    double thisWeekIncome = 0;
-    double lastWeekIncome = 0;
-    final dayIncome = <int, double>{};
-
-    for (final tx in allTx) {
-      if (tx.type != TransactionType.income) continue;
-      final d = DateTime(tx.date.year, tx.date.month, tx.date.day);
-      if (!d.isBefore(weekStartDate)) {
-        thisWeekIncome += tx.amount;
-        dayIncome[tx.date.weekday] =
-            (dayIncome[tx.date.weekday] ?? 0) + tx.amount;
-      } else if (!d.isBefore(lastWeekStartDate)) {
-        lastWeekIncome += tx.amount;
-      }
-    }
-
-    if (thisWeekIncome == 0) return const SizedBox.shrink();
-
-    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    String? bestDay;
-    double bestDayVal = 0;
-    for (int i = 1; i <= 7; i++) {
-      if ((dayIncome[i] ?? 0) > bestDayVal) {
-        bestDayVal = dayIncome[i]!;
-        bestDay = dayNames[i - 1];
-      }
-    }
-
-    final int? vsLastWeek = lastWeekIncome > 0
-        ? ((thisWeekIncome - lastWeekIncome) / lastWeekIncome * 100).round()
-        : null;
-
-    final symbol = provider.currencySymbol;
-    final theme = AppTheme.of(context);
-    final vsColor = vsLastWeek == null
-        ? theme.textSecondary
-        : vsLastWeek >= 0
-            ? AppTheme.green
-            : AppTheme.red;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: theme.card,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.accent.withOpacity(0.15)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'This Week',
-                  style: TextStyle(
-                      fontSize: 10,
-                      color: theme.textSecondary,
-                      fontWeight: FontWeight.w500),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '$symbol${thisWeekIncome.toStringAsFixed(0)}',
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: theme.textPrimary,
-                      letterSpacing: -0.4),
-                ),
-              ],
-            ),
-          ),
-          if (bestDay != null) ...[
-            _WeekStatPill(
-              icon: Icons.star_outline_rounded,
-              label: 'Best day',
-              value: bestDay,
-              color: AppTheme.amber,
-            ),
-            const SizedBox(width: 8),
-          ],
-          if (vsLastWeek != null)
-            _WeekStatPill(
-              icon: vsLastWeek >= 0
-                  ? Icons.trending_up_rounded
-                  : Icons.trending_down_rounded,
-              label: 'vs last week',
-              value: vsLastWeek >= 0 ? '+$vsLastWeek%' : '$vsLastWeek%',
-              color: vsColor,
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _WeekStatPill extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-
-  const _WeekStatPill({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: color),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: color),
-          ),
-          Text(
-            label,
-            style: TextStyle(
-                fontSize: 9,
-                color: color.withOpacity(0.7),
-                fontWeight: FontWeight.w400),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _QuickAction extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -2277,9 +2574,9 @@ class _QuickAction extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withOpacity(0.2)),
+            color: AppTheme.of(context).card,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppTheme.of(context).border),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -2287,7 +2584,7 @@ class _QuickAction extends StatelessWidget {
               Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  Icon(icon, size: 20, color: color),
+                  Icon(icon, size: 20, color: badgeCount > 0 ? AppTheme.red : AppTheme.accent),
                   if (badgeCount > 0)
                     Positioned(
                       top: -5,
@@ -2302,7 +2599,7 @@ class _QuickAction extends StatelessWidget {
                         child: Text(
                           '$badgeCount',
                           style: const TextStyle(
-                            fontSize: 9,
+                            fontSize: 11,
                             fontWeight: FontWeight.w800,
                             color: Colors.white,
                           ),
@@ -2317,7 +2614,9 @@ class _QuickAction extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: color,
+                  color: badgeCount > 0
+                      ? AppTheme.red
+                      : AppTheme.of(context).textSecondary,
                 ),
               ),
             ],

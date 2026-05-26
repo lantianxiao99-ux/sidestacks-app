@@ -260,12 +260,7 @@ class _CsvImportSheetState extends State<_CsvImportSheet> {
           .importTransactions(_stackId, _preview);
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Imported $count transactions',
-              style: const TextStyle(fontFamily: 'Sora', fontSize: 13)),
-          backgroundColor: AppTheme.of(context).card,
-          behavior: SnackBarBehavior.floating,
-        ));
+        AppToast.show(context, 'Imported \$count transactions');
       }
     } catch (e) {
       setState(() { _error = e.toString(); _loading = false; });
@@ -305,7 +300,7 @@ class _CsvImportSheetState extends State<_CsvImportSheet> {
                     : _step == _ImportStep.map
                         ? 'Map Columns'
                         : 'Preview (${_preview.length})',
-                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
             ]),
           ),
@@ -377,7 +372,7 @@ class _CsvImportSheetState extends State<_CsvImportSheet> {
           Text(
             'Supports CSV files from most banks.\nYou\'ll map columns on the next screen.',
             style: TextStyle(
-                fontSize: 12, color: AppTheme.of(context).textSecondary),
+                fontSize: 11, color: AppTheme.of(context).textSecondary),
             textAlign: TextAlign.center,
           ),
         ]),
@@ -419,7 +414,7 @@ class _CsvImportSheetState extends State<_CsvImportSheet> {
               fontSize: 11,
               fontWeight: FontWeight.w600,
               color: AppTheme.of(context).textMuted,
-              letterSpacing: 0.6)),
+)),
       const SizedBox(height: 6),
       _DropdownField<String>(
         value: _stackId,
@@ -434,7 +429,7 @@ class _CsvImportSheetState extends State<_CsvImportSheet> {
               fontSize: 11,
               fontWeight: FontWeight.w600,
               color: AppTheme.of(context).textMuted,
-              letterSpacing: 0.6)),
+)),
       const SizedBox(height: 6),
       _ColMapper(
         label: 'Date *',
@@ -463,7 +458,7 @@ class _CsvImportSheetState extends State<_CsvImportSheet> {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: AppTheme.of(context).cardAlt,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppTheme.of(context).border),
         ),
         child: Row(children: [
@@ -474,7 +469,7 @@ class _CsvImportSheetState extends State<_CsvImportSheet> {
                       fontSize: 13, fontWeight: FontWeight.w500)),
               Text('How to interpret positive values',
                   style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
                       color: AppTheme.of(context).textSecondary)),
             ]),
           ),
@@ -492,7 +487,7 @@ class _CsvImportSheetState extends State<_CsvImportSheet> {
       const SizedBox(height: 6),
       Text('${_rows.length} rows detected · ${_headers.length} columns',
           style: TextStyle(
-              fontSize: 10, color: AppTheme.of(context).textMuted)),
+              fontSize: 11, color: AppTheme.of(context).textMuted)),
       const SizedBox(height: 20),
       SizedBox(
         width: double.infinity,
@@ -557,13 +552,13 @@ class _CsvImportSheetState extends State<_CsvImportSheet> {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(tx.notes ?? tx.category,
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
                 Text(
                   '${tx.date.day}/${tx.date.month}/${tx.date.year}',
                   style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
                       color: AppTheme.of(context).textSecondary),
                 ),
               ]),
@@ -571,8 +566,7 @@ class _CsvImportSheetState extends State<_CsvImportSheet> {
             Text(
               '${isIncome ? '+' : '−'}${formatCurrency(tx.amount, symbol)}',
               style: TextStyle(
-                fontFamily: 'Courier',
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
                 color: isIncome ? AppTheme.green : AppTheme.red,
               ),
@@ -655,7 +649,7 @@ class _ColMapper extends StatelessWidget {
       value: value,
       items: [
         if (nullable)
-          const DropdownMenuItem<int?>(value: null, child: Text('— skip —')),
+          const DropdownMenuItem<int?>(value: null, child: Text('Skip')),
         ...headers.asMap().entries.map(
               (e) => DropdownMenuItem<int?>(
                   value: e.key, child: Text(e.value, overflow: TextOverflow.ellipsis)),
@@ -685,7 +679,7 @@ class _DropdownField<T> extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       decoration: BoxDecoration(
         color: AppTheme.of(context).cardAlt,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppTheme.of(context).border),
       ),
       child: Row(children: [
@@ -694,7 +688,7 @@ class _DropdownField<T> extends StatelessWidget {
             width: 90,
             child: Text(label!,
                 style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     color: AppTheme.of(context).textSecondary)),
           ),
         ],

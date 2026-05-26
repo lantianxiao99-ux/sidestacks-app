@@ -61,7 +61,7 @@ class _StacksHubScreenState extends State<StacksHubScreen>
               child: Text(
                 'Reports',
                 style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.3,
                     color: colors.textPrimary),
@@ -98,7 +98,7 @@ class _StacksHubScreenState extends State<StacksHubScreen>
                         Text(
                           'Stacks',
                           style: TextStyle(
-                            fontSize: 22,
+                            fontSize: 24,
                             fontWeight: FontWeight.w700,
                             letterSpacing: -0.4,
                             color: colors.textPrimary,
@@ -204,7 +204,7 @@ class _SegmentPillState extends State<_SegmentPill> {
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: colors.card,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: colors.border),
       ),
       child: Row(
@@ -224,10 +224,9 @@ class _SegmentPillState extends State<_SegmentPill> {
               child: Text(
                 segments[i],
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: active ? Colors.white : colors.textMuted,
-                  letterSpacing: 0.2,
                 ),
               ),
             ),

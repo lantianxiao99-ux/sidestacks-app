@@ -78,7 +78,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             pinned: false,
             title: Text('Transactions',
                 style:
-                    TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+                    TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(88),
               child: Padding(
@@ -97,7 +97,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                         decoration: InputDecoration(
                           hintText: 'Search by category, note or stack…',
                           hintStyle: TextStyle(
-                              fontSize: 12,
+                              fontSize: 13,
                               color: AppTheme.of(context).textMuted),
                           prefixIcon: Icon(Icons.search,
                               size: 16,
@@ -151,7 +151,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                       _Chip(
                           label: 'Expense',
                           active: _filter == _TxFilter.expense,
-                          color: AppTheme.red,
+                          color: AppTheme.expense,
                           onTap: () => setState(
                               () => _filter = _TxFilter.expense)),
                       const Spacer(),
@@ -183,7 +183,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                           ? 'No transactions match'
                           : 'No transactions yet',
                       style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13,
                           color: AppTheme.of(context).textSecondary),
                     ),
                     if (hasFilters) ...[
@@ -196,7 +196,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                         }),
                         child: Text('Clear filters',
                             style: TextStyle(
-                                fontSize: 12, color: AppTheme.accent)),
+                                fontSize: 13, color: AppTheme.accent)),
                       ),
                     ],
                   ],
@@ -316,7 +316,6 @@ class _DateHeader extends StatelessWidget {
           fontSize: 11,
           fontWeight: FontWeight.w600,
           color: AppTheme.of(context).textMuted,
-          letterSpacing: 0.4,
         ),
       ),
     );
@@ -334,7 +333,7 @@ class _GlobalTxRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final tx = entry.tx;
     final isIncome = tx.type == TransactionType.income;
-    final color = isIncome ? AppTheme.green : AppTheme.red;
+    final color = isIncome ? AppTheme.green : AppTheme.expense;
 
     return GestureDetector(
       onTap: onTap,
@@ -343,27 +342,13 @@ class _GlobalTxRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: AppTheme.of(context).card,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppTheme.of(context).border),
         ),
         child: Row(
           children: [
-            // Type circle
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: isIncome ? AppTheme.greenDim : AppTheme.redDim,
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  isIncome ? '+' : '−',
-                  style: TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w700, color: color),
-                ),
-              ),
-            ),
+            // Category icon
+            CategoryIconWidget(category: tx.category, isIncome: isIncome),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -374,7 +359,7 @@ class _GlobalTxRow extends StatelessWidget {
                       Expanded(
                         child: Text(tx.category,
                             style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w500)),
                       ),
                       // Stack tag
@@ -398,7 +383,7 @@ class _GlobalTxRow extends StatelessWidget {
                               child: Text(
                                 entry.stack.name,
                                 style: TextStyle(
-                                    fontSize: 9,
+                                    fontSize: 11,
                                     color: AppTheme.of(context).textSecondary,
                                     fontWeight: FontWeight.w500),
                                 maxLines: 1,
@@ -416,18 +401,18 @@ class _GlobalTxRow extends StatelessWidget {
                       Text(
                         DateFormat('MMM d').format(tx.date),
                         style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 11,
                             color: AppTheme.of(context).textMuted),
                       ),
                       if (tx.notes != null) ...[
                         Text(' · ',
                             style: TextStyle(
-                                fontSize: 10,
+                                fontSize: 11,
                                 color: AppTheme.of(context).textMuted)),
                         Expanded(
                           child: Text(tx.notes!,
                               style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 11,
                                   color: AppTheme.of(context).textSecondary),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis),
@@ -448,7 +433,6 @@ class _GlobalTxRow extends StatelessWidget {
             Text(
               '${isIncome ? '+' : '−'}${formatCurrency(tx.amount, symbol)}',
               style: TextStyle(
-                fontFamily: 'Courier',
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: color,
@@ -481,10 +465,10 @@ class _Chip extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: active ? c.withOpacity(0.12) : AppTheme.of(context).card,
+          color: AppTheme.of(context).card,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: active ? c : AppTheme.of(context).border),
+              color: active ? AppTheme.accent : AppTheme.of(context).border),
         ),
         child: Text(label,
             style: TextStyle(

@@ -67,25 +67,12 @@ class _PaywallSheetState extends State<_PaywallSheet> {
       await context.read<AppProvider>().upgradeToPremium();
       if (!mounted) return;
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Pro unlocked. Let\'s get to work!'),
-          backgroundColor: AppTheme.green,
-        ),
-      );
+      AppToast.show(context, 'Pro unlocked.');
     } on PlatformException catch (e) {
       if (!mounted) return;
       final code = PurchasesErrorHelper.getErrorCode(e);
       if (code == PurchasesErrorCode.purchaseCancelledError) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Something went wrong with the purchase. No charge was made. Try again when you\'re ready.',
-            style: TextStyle(color: AppTheme.of(context).textPrimary),
-          ),
-          backgroundColor: AppTheme.of(context).card,
-        ),
-      );
+      AppToast.error(context, 'Something went wrong with the purchase. No charge was made. Try again when you\'re ready.');
     } finally {
       if (mounted) setState(() => _purchasing = false);
     }
@@ -100,22 +87,9 @@ class _PaywallSheetState extends State<_PaywallSheet> {
     setState(() => _restoring = false);
     if (restored) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Pro subscription restored!'),
-          backgroundColor: AppTheme.green,
-        ),
-      );
+      AppToast.show(context, 'Pro restored.');
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'We couldn\'t find an active subscription. If you\'ve subscribed before, try again or contact support.',
-            style: TextStyle(color: AppTheme.of(context).textPrimary),
-          ),
-          backgroundColor: AppTheme.of(context).card,
-        ),
-      );
+      AppToast.error(context, 'No active subscription found. If you\'ve subscribed before, try again or contact support.');
     }
   }
 
@@ -225,7 +199,7 @@ class _PaywallSheetState extends State<_PaywallSheet> {
               padding: const EdgeInsets.all(3),
               decoration: BoxDecoration(
                 color: AppTheme.of(context).card,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: AppTheme.of(context).border),
               ),
               child: Row(
@@ -300,7 +274,7 @@ class _PaywallSheetState extends State<_PaywallSheet> {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     child: _restoring
                         ? const SizedBox(height: 14, width: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.accent))
-                        : Text('Restore', style: TextStyle(fontSize: 12, color: AppTheme.accent, fontWeight: FontWeight.w500)),
+                        : Text('Restore', style: TextStyle(fontSize: 11, color: AppTheme.accent, fontWeight: FontWeight.w500)),
                   ),
                 ),
                 Text('·', style: TextStyle(color: AppTheme.of(context).textMuted)),
@@ -309,7 +283,7 @@ class _PaywallSheetState extends State<_PaywallSheet> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     child: Text('Maybe later',
-                        style: TextStyle(fontSize: 12, color: AppTheme.of(context).textMuted, fontWeight: FontWeight.w500)),
+                        style: TextStyle(fontSize: 11, color: AppTheme.of(context).textMuted, fontWeight: FontWeight.w500)),
                   ),
                 ),
               ],
@@ -375,7 +349,7 @@ class _PlanToggle extends StatelessWidget {
                   child: Text(
                     badge!,
                     style: TextStyle(
-                      fontSize: 9,
+                      fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color: selected ? Colors.white : AppTheme.green,
                     ),
@@ -449,7 +423,7 @@ class _ProFeatureList extends StatelessWidget {
                   child: Text(item.label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
                 ),
                 if (item.freeNote != null)
-                  Text(item.freeNote!, style: TextStyle(fontSize: 10, color: AppTheme.of(context).textMuted)),
+                  Text(item.freeNote!, style: TextStyle(fontSize: 11, color: AppTheme.of(context).textMuted)),
                 const SizedBox(width: 8),
                 const Icon(Icons.check_circle_rounded, size: 16, color: AppTheme.green),
               ],

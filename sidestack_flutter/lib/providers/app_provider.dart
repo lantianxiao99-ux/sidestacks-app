@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show ThemeMode;
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -10,7 +11,6 @@ import 'package:uuid/uuid.dart';
 import '../models/models.dart' as models;
 import '../services/notification_service.dart';
 import '../services/purchase_service.dart';
-import '../services/demo_service.dart';
 import 'package:intl/intl.dart';
 
 // Lifetime-premium is granted server-side by setting `lifetimePremium: true`
@@ -99,7 +99,7 @@ class AppProvider extends ChangeNotifier {
   String? _firestoreDisplayName; // display name stored in users/{uid} doc
   bool _useRealName = true; // true = show real name, false = show username
   double? _monthlyIncomeGoal; // user-set monthly income target
-  ThemeMode _themeMode = ThemeMode.dark;
+  ThemeMode _themeMode = ThemeMode.light;
   String? _error;
   String? _userId;
   StreamSubscription? _subscription;
@@ -123,8 +123,8 @@ class AppProvider extends ChangeNotifier {
   int _currentStreak = 0;
   int _longestStreak = 0;
   String? _lastLoggedDateKey; // 'yyyy-MM-dd'
-  // Demo mode — shows sample data until user creates a real stack
-  bool _isDemoMode = false;
+  // Free trial — 3 days from account creation, unlocks everything except unlimited stacks
+  DateTime? _trialStartedAt;
   // Region / tax settings
   bool _isAustraliaMode = true; // AU users get GST, BAS, ABN, ATO mileage
   double _customMileageRate = 0.67; // non-AU default (IRS 2024 rate in USD)
@@ -142,6 +142,30 @@ class AppProvider extends ChangeNotifier {
   /// Archived stacks, shown in profile settings.
   List<models.SideStack> get archivedStacks =>
       _stacks.where((s) => s.isArchived).toList();
+
+  /// Non-archived income stacks only.
+  List<models.SideStack> get incomeStacks =>
+      stacks.where((s) => s.stackType == models.StackType.income).toList();
+
+  /// Non-archived budget stacks only.
+  List<models.SideStack> get budgetStacks =>
+      stacks.where((s) => s.stackType == models.StackType.budget).toList();
+
+  /// Non-archived savings stacks only.
+  List<models.SideStack> get savingsStacks =>
+      stacks.where((s) => s.stackType == models.StackType.savings).toList();
+
+  /// Non-archived salary stacks only.
+  List<models.SideStack> get salaryStacks =>
+      stacks.where((s) => s.stackType == models.StackType.salary).toList();
+
+  /// Stacks belonging to the "Main" section (personal finance).
+  List<models.SideStack> get mainStacks =>
+      stacks.where((s) => s.isPersonal).toList();
+
+  /// Stacks belonging to the "Side Hustles" section.
+  List<models.SideStack> get sideHustleStacks =>
+      stacks.where((s) => !s.isPersonal).toList();
 
   bool get isLoaded => _stacksLoaded && _prefsLoaded;
 
@@ -252,7 +276,32 @@ class AppProvider extends ChangeNotifier {
   bool get weeklyReminderEnabled => _weeklyReminderEnabled;
   double? get pendingMilestone => _pendingMilestone;
   String? get pendingPaywallTrigger => _pendingPaywallTrigger;
-  bool get isDemoMode => _isDemoMode;
+  /// True if the user is within their 3-day free trial window.
+  bool get isInTrial {
+    if (_isPremium) return false;
+    if (_trialStartedAt == null) return false;
+    return DateTime.now().difference(_trialStartedAt!) < const Duration(days: 3);
+  }
+
+  /// How many full days remain in the trial (0–3). Always 0 if not in trial.
+  int get trialDaysRemaining {
+    if (!isInTrial || _trialStartedAt == null) return 0;
+    final elapsed = DateTime.now().difference(_trialStartedAt!).inSeconds;
+    final totalSeconds = const Duration(days: 3).inSeconds;
+    final remainingSeconds = (totalSeconds - elapsed).clamp(0, totalSeconds);
+    return (remainingSeconds / 86400).ceil().clamp(0, 3);
+  }
+
+  /// True once the trial period has ended and the user is not subscribed.
+  bool get trialExpired {
+    if (_isPremium) return false;
+    if (_trialStartedAt == null) return false;
+    return !isInTrial;
+  }
+
+  /// Convenience: user has full access (subscribed or in trial).
+  bool get isPremiumOrTrial => _isPremium || isInTrial;
+
   bool get isAustraliaMode => _isAustraliaMode;
   double get customMileageRate => _customMileageRate;
   bool get mileageUseKm => _mileageUseKm;
@@ -293,29 +342,43 @@ class AppProvider extends ChangeNotifier {
     return ((current - previous) / previous) * 100;
   }
 
-  /// Free users are limited to 2 active stacks. Pro unlocks unlimited.
+  /// Returns profit values for the last [count] calendar months (oldest → newest).
+  /// Missing months are filled with 0.
+  List<double> lastNMonthsProfits([int count = 6]) {
+    final now = DateTime.now();
+    return List.generate(count, (i) {
+      final offset = count - 1 - i;
+      final d = DateTime(now.year, now.month - offset);
+      final t = _monthTotals(d.year, d.month);
+      return t['profit']!;
+    });
+  }
+
+  /// Free users are limited to 2 active stacks.
+  /// Trial does NOT unlock unlimited stacks — that requires a paid subscription.
   static const int freeStackLimit = 2;
 
   bool get canAddStack {
     if (_isPremium) return true;
+    // Trial intentionally does not bypass the stack limit
     final activeCount = _stacks.where((s) => !s.isArchived).length;
     return activeCount < freeStackLimit;
   }
 
-  /// Free users can see the last 3 months of transactions. Premium unlocks full history.
-  bool get canViewFullHistory => _isPremium;
+  /// Free users (not in trial/premium) can only see the last 3 months of transactions.
+  bool get canViewFullHistory => isPremiumOrTrial;
 
   /// Filter a list of transactions to the visible window.
-  /// Free users: last 90 days. Premium: all time.
+  /// Free users: last 90 days. Premium or trial: all time.
   List<models.Transaction> visibleTransactions(List<models.Transaction> txs) {
-    if (_isPremium) return txs;
+    if (isPremiumOrTrial) return txs;
     final cutoff = DateTime.now().subtract(const Duration(days: 90));
     return txs.where((t) => t.date.isAfter(cutoff)).toList();
   }
 
   /// Number of transactions older than 90 days that are hidden for free users.
   int get hiddenTransactionCount {
-    if (_isPremium) return 0;
+    if (isPremiumOrTrial) return 0;
     final cutoff = DateTime.now().subtract(const Duration(days: 90));
     return allTransactions.where((t) => t.date.isBefore(cutoff)).length;
   }
@@ -541,7 +604,7 @@ class AppProvider extends ChangeNotifier {
     _pendingPaywallTrigger = null;
     _error = null;
     _notifChecksRan = false;
-    _isDemoMode = false;
+    _trialStartedAt = null;
     _monthlyIncomeGoal = null;
     _isAustraliaMode = true;
     _customMileageRate = 0.67;
@@ -631,12 +694,12 @@ class AppProvider extends ChangeNotifier {
     if (savedTheme != null) {
       _themeMode = ThemeMode.values.firstWhere(
         (m) => m.name == savedTheme,
-        orElse: () => ThemeMode.dark,
+        orElse: () => ThemeMode.light,
       );
     }
 
     // Always read the users/{uid} document for authoritative premium status,
-    // onboarding flag, profile picture, and bank connection.
+    // onboarding flag, and profile picture.
     // NOTE: __meta__ (users/{uid}/stacks/__meta__) is a Firestore-reserved
     // document ID pattern and always throws invalid-argument — never use it.
     try {
@@ -679,6 +742,34 @@ class AppProvider extends ChangeNotifier {
           _firestoreDisplayName = storedName;
         }
 
+        // Free trial — read or initialise the trial start timestamp.
+        // If the field is absent this is a new user: stamp it now and write it.
+        // Existing users who already have premium are unaffected.
+        if (!_isPremium) {
+          final trialTs = userData['trialStartedAt'];
+          if (trialTs is Timestamp) {
+            _trialStartedAt = trialTs.toDate();
+          } else if (trialTs == null) {
+            // First time seeing this user — start their trial.
+            _trialStartedAt = DateTime.now();
+            unawaited(FirebaseFirestore.instance
+                .collection('users')
+                .doc(userId)
+                .set({'trialStartedAt': Timestamp.fromDate(_trialStartedAt!)},
+                    SetOptions(merge: true)));
+          }
+        }
+
+      } else {
+        // User doc doesn't exist yet — create it with trial start.
+        if (!_isPremium) {
+          _trialStartedAt = DateTime.now();
+          unawaited(FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .set({'trialStartedAt': Timestamp.fromDate(_trialStartedAt!)},
+                  SetOptions(merge: true)));
+        }
       }
     } catch (e) {
       debugPrint('AppProvider Firestore user doc error: $e');
@@ -769,30 +860,6 @@ class AppProvider extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint('refreshPremiumStatus error: $e');
-    }
-  }
-
-  // ── Demo mode ──────────────────────────────────────────────────────────────
-
-  /// Inject sample data so new users can explore the app before adding real data.
-  void enterDemoMode() {
-    if (_isDemoMode) return;
-    _isDemoMode = true;
-    _stacks = DemoService.instance.buildDemoStacks();
-    _stacksLoaded = true;
-    notifyListeners();
-  }
-
-  /// Clear demo data and return to the real (empty) state.
-  /// Call this when the user creates their first real stack.
-  void exitDemoMode() {
-    if (!_isDemoMode) return;
-    _isDemoMode = false;
-    _stacks = [];
-    _stacksLoaded = false;
-    notifyListeners();
-    if (_userId != null) {
-      _listenToStacks(_userId!);
     }
   }
 
@@ -1054,10 +1121,6 @@ class AppProvider extends ChangeNotifier {
             );
             stacks.add(stack);
           }
-          // If user had demo mode on but now has real stacks, exit demo
-          if (_isDemoMode && stacks.isNotEmpty) {
-            _isDemoMode = false;
-          }
           _stacks = stacks;
           _stacksLoaded = true;
           _error = null;
@@ -1065,6 +1128,8 @@ class AppProvider extends ChangeNotifier {
           _processRecurringTransactions();
           // Run notification health checks once per session
           _runNotificationChecks();
+          // Sync home screen widget data (iOS only)
+          _syncWidgetData();
           if (stacks.isNotEmpty && !_hasSeenOnboarding) {
             _hasSeenOnboarding = true;
             SharedPreferences.getInstance().then((p) {
@@ -1108,14 +1173,15 @@ class AppProvider extends ChangeNotifier {
     String? businessName,
     String? description,
     required models.HustleType hustleType,
+    models.StackType stackType = models.StackType.income,
     double? goalAmount,
     double? monthlyGoalAmount,
+    double? monthlyBudget,
+    double? savingsTarget,
+    bool? isPersonal,
   }) async {
-    // Exit demo mode when user creates their first real stack
-    if (_isDemoMode) {
-      _isDemoMode = false;
-      _stacks = [];
-    }
+    // Derive isPersonal from stackType if not explicitly provided
+    final resolvedIsPersonal = isPersonal ?? stackType.isPersonalByDefault;
     final id = _uuid.v4();
     final stack = models.SideStack(
       id: id,
@@ -1124,8 +1190,12 @@ class AppProvider extends ChangeNotifier {
       description: description,
       startDate: DateTime.now(),
       hustleType: hustleType,
+      stackType: stackType,
       goalAmount: goalAmount,
       monthlyGoalAmount: monthlyGoalAmount,
+      monthlyBudget: monthlyBudget,
+      savingsTarget: savingsTarget,
+      isPersonal: resolvedIsPersonal,
     );
     await _stacksRef.doc(id).set({
       'name': name,
@@ -1133,9 +1203,13 @@ class AppProvider extends ChangeNotifier {
       'description': description,
       'startDate': stack.startDate.toIso8601String(),
       'hustleType': hustleType.name,
+      'stackType': stackType.name,
       'goalAmount': goalAmount,
       'monthlyGoalAmount': monthlyGoalAmount,
+      'monthlyBudget': monthlyBudget,
+      'savingsTarget': savingsTarget,
       'isArchived': false,
+      'isPersonal': resolvedIsPersonal,
     });
     return stack;
   }
@@ -1151,6 +1225,11 @@ class AppProvider extends ChangeNotifier {
     bool clearGoal = false,
     double? monthlyGoalAmount,
     bool clearMonthlyGoal = false,
+    double? monthlyBudget,
+    bool clearMonthlyBudget = false,
+    double? savingsTarget,
+    bool clearSavingsTarget = false,
+    bool? isPersonal,
   }) async {
     final updates = <String, dynamic>{};
     if (name != null) updates['name'] = name;
@@ -1171,6 +1250,17 @@ class AppProvider extends ChangeNotifier {
     } else if (monthlyGoalAmount != null) {
       updates['monthlyGoalAmount'] = monthlyGoalAmount;
     }
+    if (clearMonthlyBudget) {
+      updates['monthlyBudget'] = null;
+    } else if (monthlyBudget != null) {
+      updates['monthlyBudget'] = monthlyBudget;
+    }
+    if (clearSavingsTarget) {
+      updates['savingsTarget'] = null;
+    } else if (savingsTarget != null) {
+      updates['savingsTarget'] = savingsTarget;
+    }
+    if (isPersonal != null) updates['isPersonal'] = isPersonal;
     await _stacksRef.doc(id).update(updates);
     final i = _stacks.indexWhere((s) => s.id == id);
     if (i != -1) {
@@ -1192,6 +1282,17 @@ class AppProvider extends ChangeNotifier {
       } else if (monthlyGoalAmount != null) {
         _stacks[i].monthlyGoalAmount = monthlyGoalAmount;
       }
+      if (clearMonthlyBudget) {
+        _stacks[i].monthlyBudget = null;
+      } else if (monthlyBudget != null) {
+        _stacks[i].monthlyBudget = monthlyBudget;
+      }
+      if (clearSavingsTarget) {
+        _stacks[i].savingsTarget = null;
+      } else if (savingsTarget != null) {
+        _stacks[i].savingsTarget = savingsTarget;
+      }
+      if (isPersonal != null) _stacks[i].isPersonal = isPersonal;
       notifyListeners();
     }
   }
@@ -1508,6 +1609,35 @@ class AppProvider extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint('_runNotificationChecks error: $e');
+    }
+  }
+
+  // ── iOS home screen widget sync ───────────────────────────────────────────
+
+  static const _widgetChannel = MethodChannel('com.sidestacks.app/widget');
+
+  /// Writes this month's financial data into the shared App Group UserDefaults
+  /// so the WidgetKit extension can display it without a network call.
+  Future<void> _syncWidgetData() async {
+    if (!Platform.isIOS) return;
+    try {
+      final now = DateTime.now();
+      const monthNames = ['', 'January', 'February', 'March', 'April', 'May',
+          'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      final totals = thisMonthTotals;
+      final top = topStackThisMonth;
+      await _widgetChannel.invokeMethod('updateWidgetData', {
+        'monthIncome': totals['income'] ?? 0.0,
+        'monthProfit': totals['profit'] ?? 0.0,
+        'monthExpenses': totals['expenses'] ?? 0.0,
+        'currencySymbol': currencySymbol,
+        'monthLabel': monthNames[now.month],
+        'topStackName': top != null ? (top['stack'] as models.SideStack).name : null,
+        'stackCount': stacks.length,
+      });
+    } catch (e) {
+      // Widget sync failing is non-fatal — don't surface to user
+      debugPrint('_syncWidgetData error: $e');
     }
   }
 

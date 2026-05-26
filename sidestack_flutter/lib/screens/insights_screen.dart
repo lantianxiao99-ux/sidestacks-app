@@ -47,12 +47,11 @@ class _InsightsScreenState extends State<InsightsScreen>
                 labelColor: AppTheme.accent,
                 unselectedLabelColor: AppTheme.of(context).textSecondary,
                 labelStyle: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700),
                 tabs: const [
-                  Tab(text: 'ANALYTICS'),
-                  Tab(text: 'TAX'),
+                  Tab(text: 'Analytics'),
+                  Tab(text: 'Tax'),
                 ],
               ),
             ),

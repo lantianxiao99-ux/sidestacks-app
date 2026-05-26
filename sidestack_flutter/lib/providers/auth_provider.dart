@@ -139,15 +139,25 @@ class AuthProvider extends ChangeNotifier {
   /// Safe for real-time UI feedback, but NOT safe for final submission —
   /// two users could both pass this check simultaneously.
   /// The actual claim always uses [_atomicReserveUsername].
+  ///
+  /// NOTE: unauthenticated users cannot read Firestore (rules require auth).
+  /// If the check fails for any reason (permissions, network), we return null
+  /// and let the atomic transaction on submit catch any real conflicts.
   Future<String?> checkUsername(String username) async {
     final formatError = _validateUsernameFormat(username);
     if (formatError != null) return formatError;
-    final doc = await _db
-        .collection('usernames')
-        .doc(username.trim().toLowerCase())
-        .get();
-    if (doc.exists) return 'That username is already taken.';
-    return null;
+    try {
+      final doc = await _db
+          .collection('usernames')
+          .doc(username.trim().toLowerCase())
+          .get();
+      if (doc.exists) return 'That username is already taken.';
+      return null;
+    } catch (_) {
+      // Can't verify availability right now (e.g. unauthenticated, offline).
+      // The atomic reserve on submit will catch actual conflicts.
+      return null;
+    }
   }
 
   /// Atomically checks availability and reserves the username in a single
@@ -695,10 +705,25 @@ class AuthProvider extends ChangeNotifier {
         return 'No account found. Check your email or username.';
       case 'wrong-password':
         return 'Incorrect password. Please try again.';
+      // Firebase v10+: merges user-not-found + wrong-password into one code
+      case 'invalid-credential':
+        return 'Email or password is incorrect.';
+      case 'user-disabled':
+        return 'This account has been disabled. Contact support if this is unexpected.';
       case 'too-many-requests':
-        return 'Too many attempts. Please try again later.';
+        return 'Too many attempts. Wait a moment and try again.';
       case 'network-request-failed':
-        return 'No internet connection.';
+        return 'No internet connection. Check your network and try again.';
+      case 'operation-not-allowed':
+        return 'This sign-in method is not enabled. Contact support.';
+      case 'account-exists-with-different-credential':
+        return 'An account already exists with this email. Try signing in a different way.';
+      case 'credential-already-in-use':
+        return 'This account is already linked to a different user.';
+      case 'requires-recent-login':
+        return 'Please sign out and sign back in to continue.';
+      case 'email-change-needs-verification':
+        return 'A verification email has been sent. Confirm it to complete the change.';
       default:
         return 'Something went wrong. Please try again.';
     }

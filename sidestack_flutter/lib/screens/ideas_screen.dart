@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/models.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/shared_widgets.dart';
 import '../widgets/idea_sheet.dart';
 
 class IdeasScreen extends StatefulWidget {
@@ -66,7 +67,7 @@ class _IdeasScreenState extends State<IdeasScreen> {
                 const Text(
                   'Ideas',
                   style: TextStyle(
-                      fontSize: 22,
+                      fontSize: 24,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.5),
                 ),
@@ -76,15 +77,16 @@ class _IdeasScreenState extends State<IdeasScreen> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: AppTheme.accentDim,
+                      color: AppTheme.of(context).cardAlt,
                       borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppTheme.of(context).border),
                     ),
                     child: Text(
                       '${ideas.length}',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: AppTheme.accent),
+                          color: AppTheme.of(context).textSecondary),
                     ),
                   ),
                 ],
@@ -111,7 +113,7 @@ class _IdeasScreenState extends State<IdeasScreen> {
                   TextField(
                     controller: _searchCtrl,
                     style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 13,
                         color: AppTheme.of(context).textPrimary),
                     decoration: InputDecoration(
                       hintText: 'Search ideas…',
@@ -308,21 +310,11 @@ class _IdeasScreenState extends State<IdeasScreen> {
       try {
         await context.read<AppProvider>().convertIdeaToStack(idea.id);
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('"${idea.title}" is now a SideStack!'),
-              backgroundColor: AppTheme.green,
-            ),
-          );
+          AppToast.show(context, '"\${idea.title}" is now a SideStack!');
         }
       } catch (e) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed: $e'),
-              backgroundColor: AppTheme.of(context).card,
-            ),
-          );
+          AppToast.error(context, 'Failed: \$e');
         }
       }
     }
@@ -370,7 +362,7 @@ class _IdeaCard extends StatelessWidget {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         decoration: BoxDecoration(
-          color: AppTheme.red.withOpacity(0.12),
+          color: AppTheme.of(context).cardAlt,
           borderRadius: BorderRadius.circular(16),
         ),
         child: const Icon(Icons.delete_outline, color: AppTheme.red),
@@ -403,7 +395,7 @@ class _IdeaCard extends StatelessWidget {
                     child: Text(
                       idea.title,
                       style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w700),
+                          fontSize: 16, fontWeight: FontWeight.w700),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -420,7 +412,7 @@ class _IdeaCard extends StatelessWidget {
                 Text(
                   idea.description!,
                   style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       color: AppTheme.of(context).textSecondary),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -470,21 +462,20 @@ class _IdeaCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
-                      color: AppTheme.green.withOpacity(0.1),
+                      color: AppTheme.of(context).cardAlt,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                          color: AppTheme.green.withOpacity(0.25)),
+                      border: Border.all(color: AppTheme.of(context).border),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.rocket_launch_outlined,
-                            size: 13, color: AppTheme.green),
+                        Icon(Icons.rocket_launch_outlined,
+                            size: 13, color: AppTheme.of(context).textSecondary),
                         const SizedBox(width: 6),
                         Text(
                           'Launch as SideStack',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: FontWeight.w700,
                             color: AppTheme.green,
                           ),
@@ -517,9 +508,9 @@ class _StatusPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: AppTheme.of(context).cardAlt,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.of(context).border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -529,7 +520,7 @@ class _StatusPill extends StatelessWidget {
           Text(
             status.label,
             style: TextStyle(
-                fontSize: 10, fontWeight: FontWeight.w700, color: color),
+                fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.of(context).textSecondary),
           ),
         ],
       ),
@@ -591,7 +582,7 @@ class _FilterChip extends StatelessWidget {
             const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           color:
-              isSelected ? AppTheme.accentDim : AppTheme.of(context).card,
+              AppTheme.of(context).card,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color:
@@ -601,7 +592,7 @@ class _FilterChip extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: FontWeight.w600,
             color: isSelected
                 ? AppTheme.accent
@@ -631,18 +622,11 @@ class _EmptyState extends StatelessWidget {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppTheme.accent.withOpacity(0.2),
-                    AppTheme.accent.withOpacity(0.05),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: AppTheme.of(context).cardAlt,
                 shape: BoxShape.circle,
               ),
-              child: const Center(
-                child: const Icon(Icons.lightbulb_outline, size: 40, color: Colors.white),
+              child: Center(
+                child: Icon(Icons.lightbulb_outline, size: 40, color: AppTheme.of(context).textMuted),
               ),
             ),
             const SizedBox(height: 20),
@@ -650,7 +634,7 @@ class _EmptyState extends StatelessWidget {
               'Your idea backlog lives here',
               textAlign: TextAlign.center,
               style: TextStyle(
-                  fontSize: 18, fontWeight: FontWeight.w800),
+                  fontSize: 16, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 8),
             Text(
@@ -669,7 +653,7 @@ class _EmptyState extends StatelessWidget {
               label: const Text(
                 'Capture first idea',
                 style: TextStyle(
-                    fontWeight: FontWeight.w700, fontSize: 14),
+                    fontWeight: FontWeight.w700, fontSize: 13),
               ),
               style: FilledButton.styleFrom(
                 backgroundColor: AppTheme.accent,
@@ -699,7 +683,7 @@ class _NoResults extends StatelessWidget {
         children: [
           Text(
             '🔍',
-            style: const TextStyle(fontSize: 36),
+            style: const TextStyle(fontSize: 24),
           ),
           const SizedBox(height: 12),
           Text(
@@ -707,7 +691,7 @@ class _NoResults extends StatelessWidget {
                 ? 'No ideas match "$query"'
                 : 'No ideas in this category yet',
             style: TextStyle(
-                fontSize: 14,
+                fontSize: 13,
                 color: AppTheme.of(context).textSecondary),
           ),
         ],

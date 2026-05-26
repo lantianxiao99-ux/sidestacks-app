@@ -59,9 +59,9 @@ void main() async {
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: Color(0xFF161918),
-      systemNavigationBarIconBrightness: Brightness.light,
+      statusBarIconBrightness: Brightness.dark,
+      systemNavigationBarColor: Colors.white,
+      systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
 
@@ -150,7 +150,7 @@ class RootScreen extends StatelessWidget {
 
     if (auth.isLoading) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: Color(0xFF14B8A6))),
+        body: Center(child: CircularProgressIndicator(color: AppTheme.accent)),
       );
     }
 
@@ -162,7 +162,7 @@ class RootScreen extends StatelessWidget {
     // Wait for prefs to load before deciding onboarding vs shell.
     if (!app.isLoaded) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: Color(0xFF14B8A6))),
+        body: Center(child: CircularProgressIndicator(color: AppTheme.accent)),
       );
     }
 

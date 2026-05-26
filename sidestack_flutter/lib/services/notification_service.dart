@@ -46,23 +46,23 @@ class NotificationService {
 
   static const _dailyMessages = [
     // Mon (weekday=1 → index 0)
-    'New week, fresh income 💰 Log your Monday hustle and own your numbers.',
+    'Ready to log this week\'s activity? Keep your numbers accurate.',
     // Tue (weekday=2 → index 1)
-    "Keep the momentum going. Have you logged today's activity? ⚡",
+    'Anything to record from today? A few seconds keeps your books clean.',
     // Wed (weekday=3 → index 2)
-    'Mid-week check-in 📊 Log your income and see where you stand.',
+    'Mid-week check-in. Have you logged all income and expenses so far?',
     // Thu (weekday=4 → index 3)
-    "The weekend's almost here. Any invoices to send before Friday? 📋",
+    'Any invoices to send before the week ends? Review your outstanding ones.',
     // Fri (weekday=5 → index 4)
-    'TGIF! Close out the week strong. Log income before the weekend 🚀',
+    'Good time to log this week\'s activity before the weekend.',
     // Sat (weekday=6 → index 5)
-    "Side hustles don't take weekends off. Logged anything today? 🔥",
+    'Anything to record from the week? Your numbers are waiting.',
     // Sun (weekday=7 → index 6)
-    'Sunday reset: check your numbers and plan the week ahead 📈',
+    'A quiet moment to review the week and plan the one ahead.',
     // Extras (used if list grows)
-    'A transaction a day keeps the surprises away. Log yours now ✅',
-    'The best freelancers know their numbers. Do you? 💡',
-    'Your future self will thank you for logging income today 🙌',
+    'Have any income or expenses to log from today?',
+    'Keeping accurate records now saves time at tax time.',
+    'Your financial picture is only as clear as your last entry.',
   ];
 
   /// Returns the daily reminder body copy for today, rotating by weekday.
@@ -155,7 +155,7 @@ class NotificationService {
 
     await _localNotifications.periodicallyShow(
       _dailyReminderId,
-      '⚡ SideStacks',
+      'SideStacks',
       _todayReminderBody(),
       RepeatInterval.daily,
       NotificationDetails(
@@ -205,23 +205,22 @@ class NotificationService {
     // Build a rich, insight-led notification body
     final StringBuffer body = StringBuffer();
     if (weeklyIncome == 0) {
-      body.write('No income logged this week. Add a transaction to stay on track 💡');
+      body.write('No income recorded this week. Add a transaction to keep your records up to date.');
     } else if (profit >= 0) {
       body.write('${symbol}${profit.toStringAsFixed(0)} profit this week');
-      if (bestStackName != null) body.write(' · $bestStackName led the way');
+      if (bestStackName != null) body.write(' · $bestStackName was your top earner');
       if (weeklyHourlyRate != null) {
         body.write(' · ${symbol}${weeklyHourlyRate.toStringAsFixed(0)}/hr effective rate');
       }
-      body.write(' 🚀');
     } else {
-      body.write('Expenses up ${symbol}${profit.abs().toStringAsFixed(0)} vs income this week');
-      if (bestStackName != null) body.write(' · $bestStackName was your top earner');
-      body.write('. Worth a review 📉');
+      body.write('Expenses exceeded income by ${symbol}${profit.abs().toStringAsFixed(0)} this week');
+      if (bestStackName != null) body.write(' · $bestStackName had the most activity');
+      body.write('. Worth reviewing your numbers.');
     }
 
     await _localNotifications.periodicallyShow(
       _weeklySummaryId,
-      '📊 Weekly Hustle Recap',
+      'SideStacks — Weekly Summary',
       body.toString(),
       RepeatInterval.weekly,
       NotificationDetails(
@@ -249,7 +248,7 @@ class NotificationService {
   }) async {
     await _localNotifications.show(
       20,
-      '⚠️ $stackName needs attention',
+      '$stackName — action needed',
       message,
       NotificationDetails(
         android: AndroidNotificationDetails(
@@ -276,7 +275,7 @@ class NotificationService {
       if (days >= 14) {
         await showStackHealthAlert(
           stackName: s['name'] as String,
-          message: 'No activity in $days days. Keep the momentum going!',
+          message: 'No activity recorded in $days days. Log any recent transactions to keep your records current.',
         );
         break; // one alert per session is enough
       }
@@ -346,7 +345,7 @@ class NotificationService {
 
       await _localNotifications.show(
         _overdueBaseId,
-        '🔴 2 Overdue Invoices',
+        '2 invoices overdue',
         '$aNum and $bNum are overdue. $sym${total.toStringAsFixed(0)} outstanding. Time to follow up!',
         _highPriorityDetails(),
       );

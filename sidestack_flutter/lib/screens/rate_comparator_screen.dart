@@ -61,7 +61,7 @@ class _RateComparatorScreenState extends State<RateComparatorScreen>
         leading: const BackButton(),
         title: const Text(
           'Worth My Time?',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
         ),
         bottom: TabBar(
           controller: _tabs,
@@ -349,13 +349,13 @@ class _CompareTabState extends State<_CompareTab> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
-                color: AppTheme.green.withOpacity(0.10),
+                color: AppTheme.of(context).card,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppTheme.green.withOpacity(0.3)),
+                border: Border.all(color: AppTheme.of(context).border),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.check_circle_outline, size: 20, color: AppTheme.green),
+                  Icon(Icons.check_circle_outline, size: 20, color: AppTheme.of(context).textSecondary),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -470,7 +470,7 @@ class _ResultCard extends StatelessWidget {
           Text(
             '$sym${net.toStringAsFixed(2)}/hr',
             style: const TextStyle(
-                fontSize: 30,
+                fontSize: 24,
                 fontWeight: FontWeight.w800,
                 color: AppTheme.accent,
                 letterSpacing: -0.8),
@@ -528,12 +528,12 @@ class _Row extends StatelessWidget {
         children: [
           Text(label,
               style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   color: theme.textSecondary,
                   fontWeight: bold ? FontWeight.w700 : FontWeight.w400)),
           Text(value,
               style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   color: color,
                   fontWeight: bold ? FontWeight.w700 : FontWeight.w600)),
         ],
@@ -627,7 +627,7 @@ class _TableCell extends StatelessWidget {
       child: Text(
         text,
         style: TextStyle(
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: header || highlight ? FontWeight.w700 : FontWeight.w400,
           color: highlight ? AppTheme.green : theme.textPrimary,
         ),
@@ -791,7 +791,7 @@ class _SectionLabel extends StatelessWidget {
     return Text(
       text,
       style: TextStyle(
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: FontWeight.w600,
           color: AppTheme.of(context).textSecondary),
     );
@@ -855,7 +855,7 @@ class _MiniInput extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: TextStyle(fontSize: 10, color: theme.textSecondary)),
+            style: TextStyle(fontSize: 11, color: theme.textSecondary)),
         const SizedBox(height: 3),
         SizedBox(
           height: 36,

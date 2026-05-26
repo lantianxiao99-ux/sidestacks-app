@@ -211,7 +211,7 @@ class TermsOfServiceScreen extends StatelessWidget {
           Text(
             'Last updated: 24 April 2026',
             style: TextStyle(
-                fontSize: 12,
+                fontSize: 13,
                 color: theme.textSecondary,
                 fontWeight: FontWeight.w500),
           ),
@@ -229,7 +229,7 @@ class TermsOfServiceScreen extends StatelessWidget {
           Text(
             heading,
             style: TextStyle(
-                fontSize: 15,
+                fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: theme.textPrimary),
           ),

@@ -29,12 +29,11 @@ class ClientsSection extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
             child: Text(
-              'YOUR CLIENTS',
+              'Clients',
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
                 color: theme.textMuted,
-                letterSpacing: 1,
               ),
             ),
           ),
@@ -46,7 +45,7 @@ class ClientsSection extends StatelessWidget {
               child: Text(
                 'No clients tracked yet — add a client name when logging income',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   color: theme.textSecondary,
                 ),
               ),
@@ -101,8 +100,7 @@ class ClientsSection extends StatelessWidget {
                         Text(
                           '$symbol${revenue.toStringAsFixed(2)}',
                           style: const TextStyle(
-                            fontSize: 12,
-                            fontFamily: 'Courier',
+                            fontSize: 11,
                             color: AppTheme.green,
                           ),
                         ),

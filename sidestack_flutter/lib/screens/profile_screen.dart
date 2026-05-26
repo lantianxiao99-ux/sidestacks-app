@@ -9,6 +9,7 @@ import '../models/models.dart';
 import '../providers/app_provider.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/shared_widgets.dart';
 import '../services/csv_export_service.dart';
 import '../widgets/paywall_sheet.dart';
 import '../services/notification_service.dart';
@@ -58,7 +59,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             backgroundColor: colors.surface,
             title: Text('Profile',
                 style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.3,
                     color: colors.textPrimary)),
@@ -74,11 +75,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
+                    gradient: LinearGradient(
                       colors: [
-                        Color(0xFF6C6FFF),
-                        Color(0xFF9B59B6),
                         AppTheme.accent,
+                        AppTheme.accent.withOpacity(0.75),
                       ],
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
@@ -104,7 +104,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Text(
                             'Advanced analytics · Unlimited stacks · Exports',
                             style:
-                                TextStyle(fontSize: 10, color: Colors.white70),
+                                TextStyle(fontSize: 11, color: Colors.white70),
                           ),
                         ],
                       ),
@@ -120,7 +120,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF6C6FFF))),
+                              color: AppTheme.accent)),
                     ),
                     const SizedBox(width: 8),
                     GestureDetector(
@@ -160,8 +160,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           children: [
                             Text(
                               provider.useRealName
-                                  ? (auth.userName ?? provider.firestoreDisplayName ?? 'Hustler')
-                                  : (provider.username ?? auth.userName ?? provider.firestoreDisplayName ?? 'Hustler'),
+                                  ? (auth.userName ?? provider.firestoreDisplayName ?? 'User')
+                                  : (provider.username ?? auth.userName ?? provider.firestoreDisplayName ?? 'User'),
                               style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
@@ -171,7 +171,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Text(
                               auth.userEmail ?? '',
                               style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 13,
                                   color: colors.textSecondary),
                             ),
                           ],
@@ -185,7 +185,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [Color(0xFF6C6FFF), Color(0xFFFFB347)],
+                              colors: [AppTheme.accent, AppTheme.amber],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
@@ -193,7 +193,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           child: const Text('PRO',
                               style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                   color: Colors.white)),
                         )
@@ -204,23 +204,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 6),
                             decoration: BoxDecoration(
-                              color: AppTheme.accentDim,
+                              color: AppTheme.accent,
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                  color:
-                                      AppTheme.accent.withOpacity(0.4)),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: const [
                                 Icon(Icons.bolt,
-                                    size: 13, color: AppTheme.accent),
+                                    size: 13, color: Colors.white),
                                 SizedBox(width: 4),
                                 Text('Go Pro',
                                     style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w700,
-                                        color: AppTheme.accent)),
+                                        color: Colors.white)),
                               ],
                             ),
                           ),
@@ -234,7 +231,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _Section(children: [
                     _Row(
                         icon: Icons.layers_outlined,
-                        iconBg: AppTheme.accentDim,
                         iconColor: AppTheme.accent,
                         label: 'Active SideStacks',
                         subtitle: 'Your active income streams',
@@ -244,7 +240,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     if (archivedCount > 0)
                       _NavRow(
                         icon: Icons.archive_outlined,
-                        iconBg: colors.cardAlt,
                         iconColor: colors.textMuted,
                         label: 'Archived Stacks',
                         subtitle: 'Restore previously archived stacks',
@@ -254,7 +249,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     _Row(
                         icon: Icons.receipt_long_outlined,
-                        iconBg: AppTheme.greenDim,
                         iconColor: AppTheme.green,
                         label: 'Total Transactions',
                         subtitle: 'Logged across all stacks',
@@ -267,7 +261,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _Section(children: [
                     _NavRow(
                       icon: Icons.tune_outlined,
-                      iconBg: AppTheme.accentDim,
                       iconColor: AppTheme.accent,
                       label: 'Preferences',
                       subtitle:
@@ -279,7 +272,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     _NavRow(
                       icon: Icons.person_outline,
-                      iconBg: colors.cardAlt,
                       iconColor: colors.textSecondary,
                       label: 'Account',
                       subtitle: auth.userEmail ?? 'Manage your account',
@@ -296,23 +288,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _Section(children: [
                     _NavRow(
                       icon: Icons.mail_outline,
-                      iconBg: AppTheme.greenDim,
                       iconColor: AppTheme.green,
                       label: 'Help & Support',
                       subtitle: 'support@sidestacks.app',
                       onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content:
-                                Text('Email us: support@sidestacks.app'),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
+                        AppToast.show(context, 'Email us: support@sidestacks.app');
                       },
                     ),
                     _NavRow(
                       icon: Icons.lock_outline,
-                      iconBg: colors.cardAlt,
                       iconColor: colors.textSecondary,
                       label: 'Privacy Policy',
                       onTap: () async {
@@ -324,7 +308,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     _NavRow(
                       icon: Icons.article_outlined,
-                      iconBg: colors.cardAlt,
                       iconColor: colors.textSecondary,
                       label: 'Terms of Use',
                       onTap: () async {
@@ -336,8 +319,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     _NavRow(
                       icon: Icons.star_outline,
-                      iconBg: const Color(0xFFFFFBEB),
-                      iconColor: const Color(0xFFF59E0B),
+                      iconColor: AppTheme.amber,
                       label: 'Rate the App',
                       onTap: () async {
                         const url =
@@ -355,7 +337,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 28),
                   Center(
                     child: Text(
-                      'SideStacks v1.0.0 · Made with 🖤',
+                      'SideStacks v1.0.0',
                       style: TextStyle(
                           fontSize: 11, color: colors.textMuted),
                     ),
@@ -390,7 +372,7 @@ class _PreferencesPage extends StatelessWidget {
         backgroundColor: colors.surface,
         title: Text('Preferences',
             style: TextStyle(
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: colors.textPrimary)),
         leading: IconButton(
@@ -420,7 +402,7 @@ class _PreferencesPage extends StatelessWidget {
                     Container(
                       width: 32, height: 32,
                       decoration: BoxDecoration(
-                        color: AppTheme.accent.withOpacity(0.12),
+                        color: AppTheme.of(context).cardAlt,
                         borderRadius: BorderRadius.circular(9),
                       ),
                       child: const Icon(Icons.badge_outlined, size: 17, color: AppTheme.accent),
@@ -454,7 +436,7 @@ class _PreferencesPage extends StatelessWidget {
                           child: Center(
                             child: Text('Real name',
                                 style: TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.w600,
+                                  fontSize: 13, fontWeight: FontWeight.w600,
                                   color: provider.useRealName ? Colors.white : AppTheme.of(context).textSecondary,
                                 )),
                           ),
@@ -476,7 +458,7 @@ class _PreferencesPage extends StatelessWidget {
                           child: Center(
                             child: Text('Username',
                                 style: TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.w600,
+                                  fontSize: 13, fontWeight: FontWeight.w600,
                                   color: !provider.useRealName ? Colors.white : AppTheme.of(context).textSecondary,
                                 )),
                           ),
@@ -498,7 +480,6 @@ class _PreferencesPage extends StatelessWidget {
           _Section(children: [
             _NavRow(
               icon: Icons.monetization_on_outlined,
-              iconBg: AppTheme.accentDim,
               iconColor: AppTheme.accent,
               label: 'Currency',
               subtitle:
@@ -517,7 +498,7 @@ class _PreferencesPage extends StatelessWidget {
                 Container(
                   width: 32, height: 32,
                   decoration: BoxDecoration(
-                    color: AppTheme.accent.withOpacity(0.12),
+                    color: AppTheme.of(context).cardAlt,
                     borderRadius: BorderRadius.circular(9),
                   ),
                   child: const Center(
@@ -529,13 +510,13 @@ class _PreferencesPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Australia mode',
+                      const Text('AU Tax Mode',
                           style: TextStyle(
                               fontSize: 13, fontWeight: FontWeight.w500)),
                       Text(
                         provider.isAustraliaMode
                             ? 'GST, BAS, ABN & ATO mileage rate enabled'
-                            : 'Generic tax rate & custom mileage rate',
+                            : 'Enable for GST, BAS, ABN & ATO mileage',
                         style: TextStyle(
                             fontSize: 11, color: colors.textMuted),
                       ),
@@ -554,8 +535,7 @@ class _PreferencesPage extends StatelessWidget {
               Divider(height: 1, color: colors.border),
               _NavRow(
                 icon: Icons.directions_car_outlined,
-                iconBg: const Color(0xFF8B5CF6).withOpacity(0.12),
-                iconColor: const Color(0xFF8B5CF6),
+                iconColor: AppTheme.accent,
                 label: 'Mileage rate',
                 subtitle:
                     '\$${provider.customMileageRate.toStringAsFixed(2)} per ${provider.mileageUseKm ? 'km' : 'mile'}',
@@ -570,8 +550,7 @@ class _PreferencesPage extends StatelessWidget {
             _Section(children: [
               _NavRow(
                 icon: Icons.flag_outlined,
-                iconBg: const Color(0xFF0F766E).withOpacity(0.12),
-                iconColor: const Color(0xFF0F766E),
+                iconColor: AppTheme.accent,
                 label: 'ABN',
                 subtitle: provider.abn?.isNotEmpty == true
                     ? 'ABN ${provider.abn}'
@@ -592,7 +571,7 @@ class _PreferencesPage extends StatelessWidget {
                   Container(
                     width: 32, height: 32,
                     decoration: BoxDecoration(
-                      color: AppTheme.accentDim,
+                      color: colors.cardAlt,
                       borderRadius: BorderRadius.circular(9),
                     ),
                     child: const Icon(Icons.palette_outlined,
@@ -650,7 +629,6 @@ class _PreferencesPage extends StatelessWidget {
           _Section(children: [
             _ToggleRow(
                 icon: Icons.notifications_outlined,
-                iconBg: AppTheme.accentDim,
                 iconColor: AppTheme.accent,
                 label: 'Daily reminders',
                 subtitle: 'Stay on top of your hustle',
@@ -667,7 +645,6 @@ class _PreferencesPage extends StatelessWidget {
                 }),
             _ToggleRow(
                 icon: Icons.bar_chart_outlined,
-                iconBg: AppTheme.greenDim,
                 iconColor: AppTheme.green,
                 label: 'Weekly summary',
                 subtitle: 'Your week at a glance, every Sunday',
@@ -707,18 +684,7 @@ class _PreferencesPage extends StatelessWidget {
             GestureDetector(
               onTap: () async {
                 if (!provider.isPremium) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text('CSV export is a Pro feature',
-                        style: TextStyle(
-                            fontFamily: 'Sora', fontSize: 13)),
-                    backgroundColor: colors.card,
-                    behavior: SnackBarBehavior.floating,
-                    action: SnackBarAction(
-                      label: 'Upgrade',
-                      textColor: AppTheme.accent,
-                      onPressed: () {},
-                    ),
-                  ));
+                  AppToast.error(context, 'CSV export is a Pro feature.');
                   return;
                 }
                 final csv = provider.buildCsv();
@@ -727,13 +693,7 @@ class _PreferencesPage extends StatelessWidget {
                     'sidestacks_${date.year}${date.month.toString().padLeft(2, '0')}${date.day.toString().padLeft(2, '0')}.csv';
                 await downloadCsv(csv, filename);
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text('Exported $filename',
-                        style: TextStyle(
-                            fontFamily: 'Sora', fontSize: 13)),
-                    backgroundColor: colors.card,
-                    behavior: SnackBarBehavior.floating,
-                  ));
+                  AppToast.show(context, 'Exported \$filename');
                 }
               },
               child: Padding(
@@ -743,9 +703,7 @@ class _PreferencesPage extends StatelessWidget {
                   Container(
                     width: 32, height: 32,
                     decoration: BoxDecoration(
-                        color: provider.isPremium
-                            ? AppTheme.accentDim
-                            : colors.cardAlt,
+                        color: colors.cardAlt,
                         borderRadius: BorderRadius.circular(9)),
                     child: Icon(Icons.download_outlined,
                         size: 16,
@@ -783,7 +741,6 @@ class _PreferencesPage extends StatelessWidget {
             // Import CSV
             _NavRow(
               icon: Icons.upload_file_outlined,
-              iconBg: AppTheme.greenDim,
               iconColor: AppTheme.green,
               label: 'Import CSV',
               subtitle: 'Bring in transactions from a CSV file',
@@ -884,11 +841,7 @@ class _AccountPageState extends State<_AccountPage> {
       if (!mounted) return;
       if (reAuthErr != null) {
         setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(reAuthErr),
-          backgroundColor: AppTheme.red,
-          behavior: SnackBarBehavior.floating,
-        ));
+        AppToast.error(context, reAuthErr);
         return;
       }
     } else {
@@ -900,11 +853,7 @@ class _AccountPageState extends State<_AccountPage> {
     if (!mounted) return;
     setState(() => _loading = false);
     if (err != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(err),
-        backgroundColor: AppTheme.red,
-        behavior: SnackBarBehavior.floating,
-      ));
+      AppToast.error(context, err);
     }
     // If deletion succeeded, Firebase auth state changes and the app
     // routes back to the sign-in screen automatically via auth listener.
@@ -973,7 +922,7 @@ class _AccountPageState extends State<_AccountPage> {
                     const SizedBox(height: 4),
                     Text(subtitle,
                         style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 13,
                             color: colors.textSecondary)),
                   ],
                   const SizedBox(height: 16),
@@ -1019,7 +968,7 @@ class _AccountPageState extends State<_AccountPage> {
                       },
                       child: const Text('Confirm',
                           style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 16,
                               fontWeight: FontWeight.w700)),
                     ),
                   ),
@@ -1044,7 +993,7 @@ class _AccountPageState extends State<_AccountPage> {
         backgroundColor: colors.surface,
         title: Text('Account',
             style: TextStyle(
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: colors.textPrimary)),
         leading: IconButton(
@@ -1054,7 +1003,7 @@ class _AccountPageState extends State<_AccountPage> {
         ),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(color: AppTheme.accent))
           : ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               children: [
@@ -1063,7 +1012,6 @@ class _AccountPageState extends State<_AccountPage> {
                 _Section(children: [
                   _Row(
                       icon: Icons.person_outline,
-                      iconBg: AppTheme.accentDim,
                       iconColor: AppTheme.accent,
                       label: auth.userName ?? 'User',
                       subtitle: auth.userEmail ?? '',
@@ -1076,7 +1024,6 @@ class _AccountPageState extends State<_AccountPage> {
                   _Section(children: [
                     _NavRow(
                       icon: Icons.lock_reset_outlined,
-                      iconBg: AppTheme.accentDim,
                       iconColor: AppTheme.accent,
                       label: 'Change Password',
                       subtitle: 'Update your login password',
@@ -1085,7 +1032,6 @@ class _AccountPageState extends State<_AccountPage> {
                     ),
                     _NavRow(
                       icon: Icons.email_outlined,
-                      iconBg: AppTheme.accentDim,
                       iconColor: AppTheme.accent,
                       label: 'Send Reset Email',
                       subtitle: 'Get a password reset link in your inbox',
@@ -1151,11 +1097,11 @@ class _AccountPageState extends State<_AccountPage> {
                         Container(
                           width: 32, height: 32,
                           decoration: BoxDecoration(
-                              color: const Color(0xFFFFF7ED),
+                              color: AppTheme.amber.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(9)),
                           child: const Icon(Icons.pause_circle_outline,
                               size: 16,
-                              color: Color(0xFFF59E0B)),
+                              color: AppTheme.amber),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -1188,7 +1134,7 @@ class _AccountPageState extends State<_AccountPage> {
                         Container(
                           width: 32, height: 32,
                           decoration: BoxDecoration(
-                              color: AppTheme.red.withOpacity(0.1),
+                              color: AppTheme.of(context).cardAlt,
                               borderRadius: BorderRadius.circular(9)),
                           child: Icon(Icons.delete_forever_outlined,
                               size: 16, color: AppTheme.red),
@@ -1227,7 +1173,7 @@ class _AccountPageState extends State<_AccountPage> {
                     icon: const Icon(Icons.logout, size: 18),
                     label: const Text('Sign out',
                         style: TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w700)),
+                            fontSize: 16, fontWeight: FontWeight.w700)),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppTheme.red,
                       foregroundColor: Colors.white,
@@ -1254,13 +1200,9 @@ Future<void> _sendResetEmail(
   if (email == null) return;
   final success = await auth.resetPassword(email);
   if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(success
-          ? 'Reset email sent to $email — check your inbox.'
-          : (auth.error ?? 'Something went wrong.')),
-      backgroundColor: success ? AppTheme.green : AppTheme.red,
-      behavior: SnackBarBehavior.floating,
-    ));
+    success
+        ? AppToast.show(context, 'Reset email sent to \$email — check your inbox.')
+        : AppToast.error(context, auth.error ?? 'Something went wrong.');
   }
 }
 
@@ -1326,12 +1268,7 @@ void _showChangePasswordSheet(
               setS(() => errorMsg = changeErr);
             } else {
               Navigator.of(sheetCtx).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Password updated successfully'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
+              AppToast.show(context, 'Password updated.');
             }
           }
 
@@ -1359,7 +1296,7 @@ void _showChangePasswordSheet(
                 const SizedBox(height: 4),
                 Text('Enter your current password, then your new one.',
                     style: TextStyle(
-                        fontSize: 12, color: colors.textSecondary)),
+                        fontSize: 13, color: colors.textSecondary)),
                 const SizedBox(height: 16),
                 TextField(
                   controller: currentCtrl,
@@ -1397,7 +1334,7 @@ void _showChangePasswordSheet(
                   const SizedBox(height: 10),
                   Text(errorMsg!,
                       style: const TextStyle(
-                          fontSize: 12, color: AppTheme.red)),
+                          fontSize: 13, color: AppTheme.red)),
                 ],
                 const SizedBox(height: 20),
                 SizedBox(
@@ -1418,7 +1355,7 @@ void _showChangePasswordSheet(
                                 color: Colors.white, strokeWidth: 2))
                         : const Text('Update Password',
                             style: TextStyle(
-                                fontSize: 15,
+                                fontSize: 16,
                                 fontWeight: FontWeight.w700)),
                   ),
                 ),
@@ -1479,14 +1416,7 @@ class _AvatarPickerState extends State<_AvatarPicker> {
       widget.onUploaded(url);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text(
-                'Could not upload photo — check your Firebase Storage rules.'),
-            backgroundColor: AppTheme.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        AppToast.error(context, 'Could not upload photo. Check your connection and try again.');
       }
     } finally {
       if (mounted) setState(() => _uploading = false);
@@ -1504,7 +1434,7 @@ class _AvatarPickerState extends State<_AvatarPicker> {
           Container(
             width: 68, height: 68,
             decoration: BoxDecoration(
-              color: AppTheme.accentDim,
+              color: AppTheme.of(context).cardAlt,
               shape: BoxShape.circle,
               border: Border.all(color: AppTheme.accent, width: 2),
             ),
@@ -1524,7 +1454,7 @@ class _AvatarPickerState extends State<_AvatarPicker> {
                               errorBuilder: (_, __, ___) => Center(
                                 child: Text(widget.initials,
                                     style: TextStyle(
-                                        fontSize: 22,
+                                        fontSize: 24,
                                         fontWeight: FontWeight.w700,
                                         color: AppTheme.accent)),
                               ),
@@ -1532,7 +1462,7 @@ class _AvatarPickerState extends State<_AvatarPicker> {
                           : Center(
                               child: Text(widget.initials,
                                   style: TextStyle(
-                                      fontSize: 22,
+                                      fontSize: 24,
                                       fontWeight: FontWeight.w700,
                                       color: AppTheme.accent)),
                             ),
@@ -1566,9 +1496,9 @@ void _showArchivedStacks(BuildContext context, AppProvider provider) {
       margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
       decoration: BoxDecoration(
-        color: const Color(0xFF111217),
+        color: AppTheme.of(context).surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFF353645)),
+        border: Border.all(color: AppTheme.of(context).border),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1579,7 +1509,7 @@ void _showArchivedStacks(BuildContext context, AppProvider provider) {
               width: 36, height: 4,
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                  color: const Color(0xFF353645),
+                  color: AppTheme.of(context).border,
                   borderRadius: BorderRadius.circular(2)),
             ),
           ),
@@ -1588,7 +1518,7 @@ void _showArchivedStacks(BuildContext context, AppProvider provider) {
           const SizedBox(height: 4),
           Text('These stacks are hidden from the dashboard.',
               style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   color: AppTheme.of(context).textSecondary)),
           const SizedBox(height: 16),
           ...provider.archivedStacks.map((stack) => Container(
@@ -1649,7 +1579,7 @@ void _showAbnDialog(BuildContext context, AppProvider provider) {
       shape:
           RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text('Australian Business Number',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1657,21 +1587,21 @@ void _showAbnDialog(BuildContext context, AppProvider provider) {
           Text(
             'Your ABN will appear on invoices you generate with SideStacks.',
             style: TextStyle(
-                fontSize: 12,
+                fontSize: 13,
                 color: AppTheme.of(context).textSecondary),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: ctrl,
             keyboardType: TextInputType.number,
-            style: const TextStyle(fontFamily: 'Courier', fontSize: 14),
+            style: const TextStyle(fontSize: 13),
             decoration: InputDecoration(
               hintText: 'e.g. 12 345 678 901',
               hintStyle: TextStyle(
                   color: AppTheme.of(context).textMuted, fontSize: 13),
               prefixText: 'ABN  ',
               prefixStyle: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: AppTheme.of(context).textMuted),
             ),
@@ -1714,7 +1644,7 @@ void _showMileageRateDialog(BuildContext context, AppProvider provider) {
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20)),
         title: const Text('Mileage Rate',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1722,14 +1652,14 @@ void _showMileageRateDialog(BuildContext context, AppProvider provider) {
             Text(
               'Set your reimbursement or deduction rate per distance unit.',
               style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   color: AppTheme.of(context).textSecondary),
             ),
             const SizedBox(height: 16),
             Row(children: [
               Text('Unit:',
                   style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       color: AppTheme.of(context).textMuted)),
               const SizedBox(width: 12),
               ChoiceChip(
@@ -1751,14 +1681,14 @@ void _showMileageRateDialog(BuildContext context, AppProvider provider) {
               controller: rateCtrl,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              style: const TextStyle(fontFamily: 'Courier', fontSize: 14),
+              style: const TextStyle(fontSize: 13),
               decoration: InputDecoration(
                 hintText: 'e.g. 0.67',
                 hintStyle: TextStyle(
                     color: AppTheme.of(context).textMuted, fontSize: 13),
                 prefixText: '\$ per ${useKm ? 'km' : 'mile'}  ',
                 prefixStyle: TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: AppTheme.of(context).textMuted),
               ),
@@ -1814,9 +1744,9 @@ void _showCurrencyPicker(BuildContext context, AppProvider provider) {
       margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       decoration: BoxDecoration(
-        color: const Color(0xFF111217),
+        color: AppTheme.of(context).surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFF353645)),
+        border: Border.all(color: AppTheme.of(context).border),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1827,7 +1757,7 @@ void _showCurrencyPicker(BuildContext context, AppProvider provider) {
               width: 36, height: 4,
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                  color: const Color(0xFF353645),
+                  color: AppTheme.of(context).border,
                   borderRadius: BorderRadius.circular(2)),
             ),
           ),
@@ -1836,7 +1766,7 @@ void _showCurrencyPicker(BuildContext context, AppProvider provider) {
           const SizedBox(height: 4),
           Text('Choose the symbol shown on your transactions',
               style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   color: AppTheme.of(context).textSecondary)),
           const SizedBox(height: 16),
           ...currencies.map((c) {
@@ -1851,10 +1781,8 @@ void _showCurrencyPicker(BuildContext context, AppProvider provider) {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
-                  color: selected
-                      ? AppTheme.accentDim
-                      : AppTheme.of(context).card,
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppTheme.of(context).card,
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                       color: selected
                           ? AppTheme.accent
@@ -1871,7 +1799,7 @@ void _showCurrencyPicker(BuildContext context, AppProvider provider) {
                     child: Center(
                         child: Text(c.$1,
                             style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w700,
                                 color: selected
                                     ? Colors.white
@@ -1929,13 +1857,14 @@ class _Section extends StatelessWidget {
 /// Static display row (icon + label + optional subtitle + trailing text).
 class _Row extends StatelessWidget {
   final IconData icon;
-  final Color iconBg, iconColor;
+  final Color? iconBg;
+  final Color iconColor;
   final String label, trailing;
   final String? subtitle;
 
   const _Row({
     required this.icon,
-    required this.iconBg,
+    this.iconBg,
     required this.iconColor,
     required this.label,
     required this.trailing,
@@ -1949,7 +1878,7 @@ class _Row extends StatelessWidget {
           Container(
               width: 32, height: 32,
               decoration: BoxDecoration(
-                  color: iconBg, borderRadius: BorderRadius.circular(9)),
+                  color: iconBg ?? AppTheme.of(context).cardAlt, borderRadius: BorderRadius.circular(9)),
               child: Icon(icon, size: 16, color: iconColor)),
           const SizedBox(width: 12),
           Expanded(
@@ -1970,7 +1899,7 @@ class _Row extends StatelessWidget {
           if (trailing.isNotEmpty)
             Text(trailing,
                 style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     color: AppTheme.of(context).textSecondary)),
         ]),
       );
@@ -1979,7 +1908,8 @@ class _Row extends StatelessWidget {
 /// Tappable navigation row (icon + label + optional subtitle + chevron).
 class _NavRow extends StatelessWidget {
   final IconData icon;
-  final Color iconBg, iconColor;
+  final Color? iconBg;
+  final Color iconColor;
   final String label;
   final String? subtitle;
   final String? trailing;
@@ -1987,7 +1917,7 @@ class _NavRow extends StatelessWidget {
 
   const _NavRow({
     required this.icon,
-    required this.iconBg,
+    this.iconBg,
     required this.iconColor,
     required this.label,
     this.subtitle,
@@ -2007,7 +1937,8 @@ class _NavRow extends StatelessWidget {
           Container(
               width: 32, height: 32,
               decoration: BoxDecoration(
-                  color: iconBg, borderRadius: BorderRadius.circular(9)),
+                  color: iconBg ?? colors.cardAlt,
+                  borderRadius: BorderRadius.circular(9)),
               child: Icon(icon, size: 16, color: iconColor)),
           const SizedBox(width: 12),
           Expanded(
@@ -2029,7 +1960,7 @@ class _NavRow extends StatelessWidget {
           if (trailing != null) ...[
             Text(trailing!,
                 style: TextStyle(
-                    fontSize: 12, color: colors.textSecondary)),
+                    fontSize: 13, color: colors.textSecondary)),
             const SizedBox(width: 4),
           ],
           Icon(Icons.chevron_right, size: 16, color: colors.textMuted),
@@ -2041,7 +1972,8 @@ class _NavRow extends StatelessWidget {
 
 class _ToggleRow extends StatelessWidget {
   final IconData icon;
-  final Color iconBg, iconColor;
+  final Color? iconBg;
+  final Color iconColor;
   final String label;
   final String? subtitle;
   final bool value;
@@ -2049,7 +1981,7 @@ class _ToggleRow extends StatelessWidget {
 
   const _ToggleRow({
     required this.icon,
-    required this.iconBg,
+    this.iconBg,
     required this.iconColor,
     required this.label,
     required this.value,
@@ -2064,7 +1996,8 @@ class _ToggleRow extends StatelessWidget {
           Container(
               width: 32, height: 32,
               decoration: BoxDecoration(
-                  color: iconBg, borderRadius: BorderRadius.circular(9)),
+                  color: iconBg ?? AppTheme.of(context).cardAlt,
+                  borderRadius: BorderRadius.circular(9)),
               child: Icon(icon, size: 16, color: iconColor)),
           const SizedBox(width: 12),
           Expanded(
@@ -2154,7 +2087,7 @@ class _NameEditRowState extends State<_NameEditRow> {
             Container(
               width: 32, height: 32,
               decoration: BoxDecoration(
-                color: AppTheme.accent.withOpacity(0.12),
+                color: AppTheme.of(context).cardAlt,
                 borderRadius: BorderRadius.circular(9),
               ),
               child: const Icon(Icons.person_outline, size: 17, color: AppTheme.accent),
@@ -2190,7 +2123,7 @@ class _NameEditRowState extends State<_NameEditRow> {
                 onTap: () => setState(() { _editing = false; _error = null; }),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                  child: Text('Cancel', style: TextStyle(fontSize: 12, color: colors.textMuted)),
+                  child: Text('Cancel', style: TextStyle(fontSize: 13, color: colors.textMuted)),
                 ),
               ),
               const SizedBox(width: 4),
@@ -2207,7 +2140,7 @@ class _NameEditRowState extends State<_NameEditRow> {
                       ? const SizedBox(width: 14, height: 14,
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                       : Text(_saved ? 'Saved ✓' : 'Save',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
                 ),
               ),
             ] else
@@ -2223,7 +2156,7 @@ class _NameEditRowState extends State<_NameEditRow> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: colors.border),
                   ),
-                  child: Text('Edit', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: colors.textSecondary)),
+                  child: Text('Edit', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: colors.textSecondary)),
                 ),
               ),
           ]),
@@ -2324,7 +2257,7 @@ class _UsernameFieldState extends State<_UsernameField> {
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                     : Text(
                         _saved ? 'Saved ✓' : 'Save',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
                       ),
               ),
             ),
@@ -2349,12 +2282,11 @@ class _SectionHeader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              title.toUpperCase(),
+              title,
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color: AppTheme.of(context).textMuted,
-                letterSpacing: 0.8,
               ),
             ),
             if (subtitle != null)

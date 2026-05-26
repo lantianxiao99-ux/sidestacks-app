@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/auth_provider.dart';
@@ -57,7 +58,8 @@ class _AuthScreenState extends State<AuthScreen>
   Future<void> _submitEmail() async {
     final auth = context.read<AuthProvider>();
     setState(() => _isSubmitting = true);
-    bool success;
+    bool success = false;
+    try {
     if (_tabController.index == 0) {
       success = await auth.signInWithEmail(
         _emailController.text.trim(),
@@ -68,18 +70,14 @@ class _AuthScreenState extends State<AuthScreen>
       if (_firstNameController.text.trim().isEmpty ||
           _lastNameController.text.trim().isEmpty) {
         setState(() => _isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter your first and last name')),
-        );
+        AppToast.error(context, 'Please enter your first and last name');
         return;
       }
       // Validate username
       final username = _usernameController.text.trim();
       if (username.isEmpty) {
         setState(() => _isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please choose a username')),
-        );
+        AppToast.error(context, 'Please choose a username');
         return;
       }
       final usernameErr = await auth.checkUsername(username);
@@ -87,12 +85,16 @@ class _AuthScreenState extends State<AuthScreen>
         setState(() { _usernameError = usernameErr; _isSubmitting = false; });
         return;
       }
-      // Validate passwords
+      // Validate password strength
+      if (_passwordController.text.length < 8) {
+        setState(() => _isSubmitting = false);
+        AppToast.error(context, 'Password must be at least 8 characters');
+        return;
+      }
+      // Validate passwords match
       if (_passwordController.text != _confirmPasswordController.text) {
         setState(() => _isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Passwords do not match')),
-        );
+        AppToast.error(context, 'Passwords do not match');
         return;
       }
       success = await auth.signUpWithEmail(
@@ -109,12 +111,12 @@ class _AuthScreenState extends State<AuthScreen>
     }
     setState(() => _isSubmitting = false);
     if (!success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(auth.error ?? 'Something went wrong'),
-          backgroundColor: AppTheme.red,
-        ),
-      );
+      AppToast.error(context, auth.error ?? 'Something went wrong');
+    }
+    } catch (e) {
+      // Safety net: any unexpected exception resets the loading state
+      // so the spinner never gets stuck permanently.
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
@@ -125,9 +127,7 @@ class _AuthScreenState extends State<AuthScreen>
     if (!mounted) return; // widget may have unmounted if sign-in navigated away
     setState(() => _isSubmitting = false);
     if (!success && auth.error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(auth.error!), backgroundColor: AppTheme.red),
-      );
+      AppToast.error(context, auth.error!);
     }
   }
 
@@ -138,9 +138,7 @@ class _AuthScreenState extends State<AuthScreen>
     if (!mounted) return;
     setState(() => _isSubmitting = false);
     if (!success && auth.error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(auth.error!), backgroundColor: AppTheme.red),
-      );
+      AppToast.error(context, auth.error!);
     }
   }
 
@@ -191,10 +189,10 @@ class _AuthScreenState extends State<AuthScreen>
                         ),
                         const SizedBox(height: 16),
                         const Text('SideStacks',
-                            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.5)),
+                            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.5)),
                         const SizedBox(height: 6),
-                        Text('Track your hustles. Know your profit.',
-                            style: TextStyle(fontSize: 14, color: AppTheme.of(context).textSecondary)),
+                        Text('Track your income. Know your profit.',
+                            style: TextStyle(fontSize: 13, color: AppTheme.of(context).textSecondary)),
                       ],
                     ),
                   ),
@@ -204,7 +202,7 @@ class _AuthScreenState extends State<AuthScreen>
                     padding: const EdgeInsets.all(3),
                     decoration: BoxDecoration(
                       color: AppTheme.of(context).card,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(14),
                       border: Border.all(color: AppTheme.of(context).border),
                     ),
                     child: TabBar(
@@ -213,7 +211,7 @@ class _AuthScreenState extends State<AuthScreen>
                       indicator: BoxDecoration(color: AppTheme.of(context).cardAlt, borderRadius: BorderRadius.circular(9)),
                       indicatorSize: TabBarIndicatorSize.tab,
                       dividerColor: Colors.transparent,
-                      labelStyle: TextStyle(fontFamily: 'Sora', fontSize: 12, fontWeight: FontWeight.w600),
+                      labelStyle: TextStyle(fontFamily: 'Sora', fontSize: 13, fontWeight: FontWeight.w600),
                       labelColor: AppTheme.of(context).textPrimary,
                       unselectedLabelColor: AppTheme.of(context).textSecondary,
                       tabs: const [Tab(text: 'Sign In'), Tab(text: 'Create Account')],
@@ -231,9 +229,10 @@ class _AuthScreenState extends State<AuthScreen>
                               _FieldLabel('First name'),
                               TextField(
                                 controller: _firstNameController,
-                                style: TextStyle(fontSize: 14, color: AppTheme.of(context).textPrimary),
+                                style: TextStyle(fontSize: 13, color: AppTheme.of(context).textPrimary),
                                 decoration: const InputDecoration(hintText: 'Jordan'),
                                 textCapitalization: TextCapitalization.words,
+                                inputFormatters: [LengthLimitingTextInputFormatter(50)],
                               ),
                             ],
                           ),
@@ -246,9 +245,10 @@ class _AuthScreenState extends State<AuthScreen>
                               _FieldLabel('Last name'),
                               TextField(
                                 controller: _lastNameController,
-                                style: TextStyle(fontSize: 14, color: AppTheme.of(context).textPrimary),
+                                style: TextStyle(fontSize: 13, color: AppTheme.of(context).textPrimary),
                                 decoration: const InputDecoration(hintText: 'Dawes'),
                                 textCapitalization: TextCapitalization.words,
+                                inputFormatters: [LengthLimitingTextInputFormatter(50)],
                               ),
                             ],
                           ),
@@ -259,16 +259,17 @@ class _AuthScreenState extends State<AuthScreen>
                     _FieldLabel('Username'),
                     TextField(
                       controller: _usernameController,
-                      style: TextStyle(fontSize: 14, color: AppTheme.of(context).textPrimary),
+                      style: TextStyle(fontSize: 13, color: AppTheme.of(context).textPrimary),
                       decoration: InputDecoration(
                         hintText: 'jordandawes',
                         prefixText: '@',
                         errorText: _usernameError,
                         helperText: 'Letters, numbers and underscores only',
-                        helperStyle: TextStyle(fontSize: 10, color: AppTheme.of(context).textMuted),
+                        helperStyle: TextStyle(fontSize: 11, color: AppTheme.of(context).textMuted),
                       ),
                       keyboardType: TextInputType.visiblePassword,
                       autocorrect: false,
+                      inputFormatters: [LengthLimitingTextInputFormatter(30)],
                       onChanged: (_) { if (_usernameError != null) setState(() => _usernameError = null); },
                     ),
                     const SizedBox(height: 14),
@@ -277,9 +278,10 @@ class _AuthScreenState extends State<AuthScreen>
                   _FieldLabel(_tabController.index == 0 ? 'Email or username' : 'Email'),
                   TextField(
                     controller: _emailController,
-                    style: TextStyle(fontSize: 14, color: AppTheme.of(context).textPrimary),
+                    style: TextStyle(fontSize: 13, color: AppTheme.of(context).textPrimary),
                     decoration: InputDecoration(hintText: _tabController.index == 0 ? 'you@example.com or @username' : 'you@example.com'),
                     keyboardType: _tabController.index == 0 ? TextInputType.text : TextInputType.emailAddress,
+                    inputFormatters: [LengthLimitingTextInputFormatter(254)],
                   ),
                   const SizedBox(height: 14),
 
@@ -287,7 +289,7 @@ class _AuthScreenState extends State<AuthScreen>
                   TextField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
-                    style: TextStyle(fontSize: 14, color: AppTheme.of(context).textPrimary),
+                    style: TextStyle(fontSize: 13, color: AppTheme.of(context).textPrimary),
                     decoration: InputDecoration(
                       hintText: '••••••••',
                       suffixIcon: IconButton(
@@ -298,6 +300,7 @@ class _AuthScreenState extends State<AuthScreen>
                         onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                       ),
                     ),
+                    inputFormatters: [LengthLimitingTextInputFormatter(128)],
                   ),
                   const SizedBox(height: 14),
 
@@ -306,8 +309,9 @@ class _AuthScreenState extends State<AuthScreen>
                     TextField(
                       controller: _confirmPasswordController,
                       obscureText: _obscurePassword,
-                      style: TextStyle(fontSize: 14, color: AppTheme.of(context).textPrimary),
+                      style: TextStyle(fontSize: 13, color: AppTheme.of(context).textPrimary),
                       decoration: const InputDecoration(hintText: '••••••••'),
+                      inputFormatters: [LengthLimitingTextInputFormatter(128)],
                     ),
                     const SizedBox(height: 24),
                   ] else ...[
@@ -318,7 +322,7 @@ class _AuthScreenState extends State<AuthScreen>
                         child: const Padding(
                           padding: EdgeInsets.symmetric(vertical: 8),
                           child: Text('Forgot password?',
-                              style: TextStyle(fontSize: 12, color: AppTheme.accent, fontWeight: FontWeight.w500)),
+                              style: TextStyle(fontSize: 13, color: AppTheme.accent, fontWeight: FontWeight.w500)),
                         ),
                       ),
                     ),
@@ -335,7 +339,7 @@ class _AuthScreenState extends State<AuthScreen>
                     Expanded(child: Divider(color: AppTheme.of(context).border)),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Text('or', style: TextStyle(fontSize: 12, color: AppTheme.of(context).textMuted)),
+                      child: Text('or', style: TextStyle(fontSize: 13, color: AppTheme.of(context).textMuted)),
                     ),
                     Expanded(child: Divider(color: AppTheme.of(context).border)),
                   ]),
@@ -535,7 +539,7 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
               Container(
                 width: 36, height: 36,
                 decoration: BoxDecoration(
-                  color: AppTheme.accentDim,
+                  color: AppTheme.of(context).cardAlt,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(Icons.lock_reset_outlined,
@@ -552,7 +556,7 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
                             fontWeight: FontWeight.w700,
                             color: colors.textPrimary)),
                     Text('We\'ll email you a reset link',
-                        style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+                        style: TextStyle(fontSize: 13, color: colors.textSecondary)),
                   ],
                 ),
               ),
@@ -564,26 +568,26 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppTheme.greenDim,
+                  color: AppTheme.of(context).card,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppTheme.green.withOpacity(0.3)),
+                  border: Border.all(color: AppTheme.of(context).border),
                 ),
                 child: Row(children: [
-                  const Icon(Icons.mark_email_read_outlined,
-                      size: 22, color: AppTheme.green),
+                  Icon(Icons.mark_email_read_outlined,
+                      size: 22, color: AppTheme.of(context).textSecondary),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Check your inbox!',
+                        Text('Check your inbox!',
                             style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w700,
-                                color: AppTheme.green)),
+                                color: AppTheme.of(context).textPrimary)),
                         Text('We\'ve sent a password reset link. It may take a minute to arrive.',
                             style: TextStyle(
-                                fontSize: 12, color: colors.textSecondary, height: 1.4)),
+                                fontSize: 13, color: colors.textSecondary, height: 1.4)),
                       ],
                     ),
                   ),
@@ -594,12 +598,13 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
                 controller: _ctrl,
                 autofocus: true,
                 keyboardType: TextInputType.text,
-                style: TextStyle(fontSize: 14, color: colors.textPrimary),
+                style: TextStyle(fontSize: 13, color: colors.textPrimary),
                 decoration: InputDecoration(
                   hintText: 'you@example.com or @username',
                   hintStyle: TextStyle(color: colors.textMuted, fontSize: 13),
                   errorText: _error,
                 ),
+                inputFormatters: [LengthLimitingTextInputFormatter(254)],
                 onSubmitted: (_) => _sendResetEmail(),
               ),
               const SizedBox(height: 16),
@@ -620,7 +625,7 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
                               color: Colors.white, strokeWidth: 2))
                       : const Text('Send reset email',
                           style: TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w700)),
+                              fontSize: 16, fontWeight: FontWeight.w700)),
                 ),
               ),
             ],
@@ -653,12 +658,12 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
                     children: [
                       Text('Forgot your username?',
                           style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: colors.textPrimary)),
                       Text('Look it up using your email address',
                           style: TextStyle(
-                              fontSize: 12, color: colors.textSecondary)),
+                              fontSize: 13, color: colors.textSecondary)),
                     ],
                   ),
                 ),
@@ -678,22 +683,22 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppTheme.accentDim,
+                    color: AppTheme.of(context).card,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppTheme.accent.withOpacity(0.3)),
+                    border: Border.all(color: AppTheme.of(context).border),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Your username is:',
-                          style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+                          style: TextStyle(fontSize: 13, color: colors.textSecondary)),
                       const SizedBox(height: 4),
                       Text('@$_foundUsername',
-                          style: const TextStyle(
-                              fontSize: 20,
+                          style: TextStyle(
+                              fontSize: 16,
                               fontWeight: FontWeight.w700,
-                              color: AppTheme.accent,
-                              letterSpacing: 0.5)),
+                              color: colors.textPrimary,
+)),
                     ],
                   ),
                 ),
@@ -701,12 +706,13 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
                 TextField(
                   controller: _emailForUsernameCtrl,
                   keyboardType: TextInputType.emailAddress,
-                  style: TextStyle(fontSize: 14, color: colors.textPrimary),
+                  style: TextStyle(fontSize: 13, color: colors.textPrimary),
                   decoration: InputDecoration(
                     hintText: 'Email address on your account',
                     hintStyle: TextStyle(color: colors.textMuted, fontSize: 13),
                     errorText: _usernameError,
                   ),
+                  inputFormatters: [LengthLimitingTextInputFormatter(254)],
                   onSubmitted: (_) => _lookUpUsername(),
                 ),
                 const SizedBox(height: 12),
@@ -726,7 +732,7 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
                                 color: colors.textMuted, strokeWidth: 2))
                         : Text('Find my username',
                             style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w600,
                                 color: colors.textPrimary)),
                   ),
@@ -750,8 +756,8 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 6),
     child: Text(
-      text.toUpperCase(),
-      style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: AppTheme.of(context).textMuted, letterSpacing: 0.8),
+      text,
+      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.of(context).textMuted),
     ),
   );
 }
@@ -820,7 +826,7 @@ class _AccountLinkScreenState extends State<_AccountLinkScreen> {
                     Container(
                       width: 64, height: 64,
                       decoration: BoxDecoration(
-                        color: AppTheme.accentDim,
+                        color: AppTheme.of(context).cardAlt,
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(Icons.link, size: 30, color: AppTheme.accent),
@@ -849,11 +855,11 @@ class _AccountLinkScreenState extends State<_AccountLinkScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
                 decoration: BoxDecoration(
                   color: colors.cardAlt,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: colors.border),
                 ),
                 child: Text(widget.email,
-                    style: TextStyle(fontSize: 14, color: colors.textPrimary)),
+                    style: TextStyle(fontSize: 13, color: colors.textPrimary)),
               ),
               const SizedBox(height: 16),
 
@@ -864,7 +870,7 @@ class _AccountLinkScreenState extends State<_AccountLinkScreen> {
                   controller: _passwordCtrl,
                   obscureText: _obscure,
                   autofocus: true,
-                  style: TextStyle(fontSize: 14, color: colors.textPrimary),
+                  style: TextStyle(fontSize: 13, color: colors.textPrimary),
                   decoration: InputDecoration(
                     hintText: 'Your SideStacks password',
                     hintStyle: TextStyle(color: colors.textMuted, fontSize: 13),
@@ -897,7 +903,7 @@ class _AccountLinkScreenState extends State<_AccountLinkScreen> {
                       ? const SizedBox(width: 18, height: 18,
                           child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                       : const Text('Link accounts & continue',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                 ),
               ),
               const SizedBox(height: 14),

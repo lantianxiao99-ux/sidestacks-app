@@ -1,4 +1,12 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
+
+// ─── Transaction confirmation — compact non-blocking toast ───────────────────
+//
+// Replaces the old full-screen backdrop overlay. A 48px pill slides up from
+// the bottom of the screen, holds for 1.2 s, then fades out. The sheet
+// dismisses immediately on submit; this toast appears over the dashboard
+// without blocking any interaction.
 
 Future<void> showTransactionConfirmation(
   BuildContext context, {
@@ -7,139 +15,144 @@ Future<void> showTransactionConfirmation(
   required String symbol,
 }) async {
   final overlay = Overlay.of(context);
-  late OverlayEntry overlayEntry;
+  late OverlayEntry entry;
 
-  overlayEntry = OverlayEntry(
-    builder: (ctx) => _TransactionConfirmationOverlay(
+  entry = OverlayEntry(
+    builder: (ctx) => _TransactionToast(
       isIncome: isIncome,
       amount: amount,
       symbol: symbol,
-      onDismissed: () => overlayEntry.remove(),
+      onDone: () {
+        if (entry.mounted) entry.remove();
+      },
     ),
   );
 
-  overlay.insert(overlayEntry);
+  overlay.insert(entry);
 
-  // Auto-dismiss after 1.5 seconds
-  await Future.delayed(const Duration(milliseconds: 1500));
-  if (overlayEntry.mounted) {
-    overlayEntry.remove();
-  }
+  // Auto-remove after animation completes (300ms in + 1200ms hold + 250ms out)
+  await Future.delayed(const Duration(milliseconds: 1750));
+  if (entry.mounted) entry.remove();
 }
 
-class _TransactionConfirmationOverlay extends StatefulWidget {
+class _TransactionToast extends StatefulWidget {
   final bool isIncome;
   final double amount;
   final String symbol;
-  final VoidCallback onDismissed;
+  final VoidCallback onDone;
 
-  const _TransactionConfirmationOverlay({
+  const _TransactionToast({
     required this.isIncome,
     required this.amount,
     required this.symbol,
-    required this.onDismissed,
+    required this.onDone,
   });
 
   @override
-  State<_TransactionConfirmationOverlay> createState() =>
-      _TransactionConfirmationOverlayState();
+  State<_TransactionToast> createState() => _TransactionToastState();
 }
 
-class _TransactionConfirmationOverlayState
-    extends State<_TransactionConfirmationOverlay> with TickerProviderStateMixin {
-  late AnimationController _scaleCtrl;
-  late Animation<double> _scaleAnimation;
+class _TransactionToastState extends State<_TransactionToast>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<Offset> _slide;
+  late Animation<double> _fade;
 
   @override
   void initState() {
     super.initState();
-
-    _scaleCtrl = AnimationController(
+    _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 300),
     );
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.4),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
 
-    // Bounce curve: scales from 0 to 1.2, then settles to 1.0
-    _scaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _scaleCtrl, curve: Curves.elasticOut),
-    );
+    _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
 
-    _scaleCtrl.forward();
+    _ctrl.forward();
+
+    // Hold, then fade out
+    Future.delayed(const Duration(milliseconds: 1200), () async {
+      if (mounted) {
+        await _ctrl.reverse();
+        widget.onDone();
+      }
+    });
   }
 
   @override
   void dispose() {
-    _scaleCtrl.dispose();
+    _ctrl.dispose();
     super.dispose();
-  }
-
-  String get _formattedAmount {
-    final sign = widget.isIncome ? '+' : '−';
-    return '$sign${widget.symbol}${widget.amount.toStringAsFixed(2)}';
-  }
-
-  String get _message {
-    return widget.isIncome ? 'Income logged' : 'Expense tracked';
-  }
-
-  Color get _accentColor {
-    return widget.isIncome
-        ? const Color(0xFF22C55E) // green
-        : const Color(0xFFEF4444); // red
   }
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.black.withOpacity(0.5),
-      child: Center(
-        child: ScaleTransition(
-          scale: _scaleAnimation,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Large checkmark icon
-              Container(
-                width: 80,
-                height: 80,
+    final color = widget.isIncome ? AppTheme.green : AppTheme.expense;
+    final sign = widget.isIncome ? '+' : '−';
+    final label = widget.isIncome ? 'Income logged' : 'Expense recorded';
+
+    return Positioned(
+      bottom: 104, // above bottom nav
+      left: 0,
+      right: 0,
+      child: IgnorePointer(
+        child: FadeTransition(
+          opacity: _fade,
+          child: SlideTransition(
+            position: _slide,
+            child: Center(
+              child: Container(
+                height: 48,
+                padding: const EdgeInsets.symmetric(horizontal: 18),
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _accentColor.withOpacity(0.15),
+                  color: AppTheme.of(context).card,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: AppTheme.of(context).border),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                child: Center(
-                  child: Icon(
-                    Icons.check_circle,
-                    size: 64,
-                    color: _accentColor,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AppTheme.of(context).textPrimary,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '$sign${widget.symbol}${widget.amount.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: color,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 24),
-
-              // Amount
-              Text(
-                _formattedAmount,
-                style: TextStyle(
-                  fontFamily: 'Sora',
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700,
-                  color: _accentColor,
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // Message
-              Text(
-                _message,
-                style: const TextStyle(
-                  fontFamily: 'Sora',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white,
-                  letterSpacing: 0.2,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

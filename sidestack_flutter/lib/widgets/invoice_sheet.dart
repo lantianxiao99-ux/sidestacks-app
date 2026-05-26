@@ -4,6 +4,7 @@ import '../models/models.dart';
 import '../providers/app_provider.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/shared_widgets.dart';
 import '../services/invoice_pdf_service.dart';
 
 // ─── Billing types ─────────────────────────────────────────────────────────────
@@ -202,13 +203,7 @@ class _InvoiceSheetState extends State<_InvoiceSheet> {
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-              'Hmm, something went wrong generating your invoice. Give it another try!',
-              style: const TextStyle(fontFamily: 'Sora', fontSize: 13)),
-          backgroundColor: AppTheme.of(context).card,
-          behavior: SnackBarBehavior.floating,
-        ));
+        AppToast.error(context, 'Something went wrong generating your invoice. Give it another try.');
       }
     }
     if (mounted) setState(() => _generating = false);
@@ -221,10 +216,7 @@ class _InvoiceSheetState extends State<_InvoiceSheet> {
         .where((i) => i.descCtrl.text.trim().isNotEmpty && i.lineTotal > 0)
         .toList();
     if (validItems.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Add at least one line item before previewing.'),
-        behavior: SnackBarBehavior.floating,
-      ));
+      AppToast.error(context, 'Add at least one line item before previewing.');
       return;
     }
     showModalBottomSheet(
@@ -309,7 +301,7 @@ class _InvoiceSheetState extends State<_InvoiceSheet> {
                 const Expanded(
                   child: Text('Generate Invoice',
                       style: TextStyle(
-                          fontSize: 17, fontWeight: FontWeight.w700)),
+                          fontSize: 16, fontWeight: FontWeight.w700)),
                 ),
                 // Subtotal preview
                 Container(
@@ -322,10 +314,10 @@ class _InvoiceSheetState extends State<_InvoiceSheet> {
                   child: Text(
                     '$symbol${_subtotal.toStringAsFixed(2)}',
                     style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: AppTheme.accent,
-                        fontFamily: 'Courier'),
+                        ),
                   ),
                 ),
               ]),
@@ -397,7 +389,7 @@ class _InvoiceSheetState extends State<_InvoiceSheet> {
                                   Text(
                                     'GST ${symbol}${(_subtotal * 0.10).toStringAsFixed(2)} · Total ${symbol}${(_subtotal * 1.10).toStringAsFixed(2)}',
                                     style: const TextStyle(
-                                        fontSize: 10,
+                                        fontSize: 11,
                                         color: Color(0xFF0F766E)),
                                   ),
                               ],
@@ -466,7 +458,7 @@ class _InvoiceSheetState extends State<_InvoiceSheet> {
                             description: '', amount: 0))),
                     icon: const Icon(Icons.add, size: 16),
                     label: const Text('Add line item',
-                        style: TextStyle(fontSize: 12)),
+                        style: TextStyle(fontSize: 11)),
                     style: TextButton.styleFrom(
                         foregroundColor: AppTheme.accent,
                         padding: EdgeInsets.zero),
@@ -490,7 +482,6 @@ class _InvoiceSheetState extends State<_InvoiceSheet> {
                         style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
-                            fontFamily: 'Courier',
                             color: AppTheme.accent),
                       ),
                     ]),
@@ -510,7 +501,7 @@ class _InvoiceSheetState extends State<_InvoiceSheet> {
                     child: Text(
                       'This will appear on the PDF so your client can pay immediately.',
                       style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 11,
                           color: AppTheme.of(context).textMuted),
                     ),
                   ),
@@ -692,7 +683,7 @@ class _LineItemRow extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppTheme.of(context).cardAlt,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppTheme.of(context).border),
       ),
       child: Column(
@@ -705,11 +696,11 @@ class _LineItemRow extends StatelessWidget {
                 controller: ctrl.descCtrl,
                 onChanged: (_) => onChanged(),
                 style: TextStyle(
-                    fontSize: 12, color: AppTheme.of(context).textPrimary),
+                    fontSize: 11, color: AppTheme.of(context).textPrimary),
                 decoration: InputDecoration(
                     hintText: 'Description',
                     hintStyle: TextStyle(
-                        fontSize: 12, color: AppTheme.of(context).textMuted),
+                        fontSize: 11, color: AppTheme.of(context).textMuted),
                     border: InputBorder.none,
                     isDense: true,
                     contentPadding: EdgeInsets.zero),
@@ -759,7 +750,7 @@ class _LineItemRow extends StatelessWidget {
                         Text(
                           t.label,
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: isActive
                                 ? FontWeight.w600
                                 : FontWeight.w400,
@@ -792,7 +783,7 @@ class _LineItemRow extends StatelessWidget {
         return Row(children: [
           Text(symbol,
               style: TextStyle(
-                  fontSize: 12, color: AppTheme.of(context).textSecondary)),
+                  fontSize: 11, color: AppTheme.of(context).textSecondary)),
           const SizedBox(width: 4),
           Expanded(
             child: TextFormField(
@@ -800,11 +791,11 @@ class _LineItemRow extends StatelessWidget {
               onChanged: (_) => onChanged(),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               style: TextStyle(
-                  fontSize: 12, color: AppTheme.of(context).textPrimary),
+                  fontSize: 11, color: AppTheme.of(context).textPrimary),
               decoration: InputDecoration(
                   hintText: '0.00',
                   hintStyle: TextStyle(
-                      fontSize: 12, color: AppTheme.of(context).textMuted),
+                      fontSize: 11, color: AppTheme.of(context).textMuted),
                   border: InputBorder.none,
                   isDense: true,
                   contentPadding: EdgeInsets.zero),
@@ -813,9 +804,8 @@ class _LineItemRow extends StatelessWidget {
           Text(
             '= $symbol${ctrl.lineTotal.toStringAsFixed(2)}',
             style: TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
-                fontFamily: 'Courier',
                 color: AppTheme.accent),
           ),
         ]);
@@ -825,7 +815,7 @@ class _LineItemRow extends StatelessWidget {
         return Row(children: [
           Text('$symbol',
               style: TextStyle(
-                  fontSize: 12, color: AppTheme.of(context).textSecondary)),
+                  fontSize: 11, color: AppTheme.of(context).textSecondary)),
           const SizedBox(width: 2),
           SizedBox(
             width: 60,
@@ -834,7 +824,7 @@ class _LineItemRow extends StatelessWidget {
               onChanged: (_) => onChanged(),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               style: TextStyle(
-                  fontSize: 12, color: AppTheme.of(context).textPrimary),
+                  fontSize: 11, color: AppTheme.of(context).textPrimary),
               decoration: InputDecoration(
                   hintText: '0.00',
                   hintStyle: TextStyle(
@@ -854,7 +844,7 @@ class _LineItemRow extends StatelessWidget {
               onChanged: (_) => onChanged(),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               style: TextStyle(
-                  fontSize: 12, color: AppTheme.of(context).textPrimary),
+                  fontSize: 11, color: AppTheme.of(context).textPrimary),
               decoration: InputDecoration(
                   hintText: '0',
                   hintStyle: TextStyle(
@@ -871,9 +861,8 @@ class _LineItemRow extends StatelessWidget {
           Text(
             '= $symbol${ctrl.lineTotal.toStringAsFixed(2)}',
             style: TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
-                fontFamily: 'Courier',
                 color: AppTheme.accent),
           ),
         ]);
@@ -888,7 +877,7 @@ class _LineItemRow extends StatelessWidget {
               onChanged: (_) => onChanged(),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               style: TextStyle(
-                  fontSize: 12, color: AppTheme.of(context).textPrimary),
+                  fontSize: 11, color: AppTheme.of(context).textPrimary),
               decoration: InputDecoration(
                   hintText: 'Qty',
                   hintStyle: TextStyle(
@@ -900,22 +889,22 @@ class _LineItemRow extends StatelessWidget {
           ),
           Text(' × ',
               style: TextStyle(
-                  fontSize: 12, color: AppTheme.of(context).textSecondary)),
+                  fontSize: 11, color: AppTheme.of(context).textSecondary)),
           Expanded(
             child: TextFormField(
               controller: ctrl.priceCtrl,
               onChanged: (_) => onChanged(),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               style: TextStyle(
-                  fontSize: 12, color: AppTheme.of(context).textPrimary),
+                  fontSize: 11, color: AppTheme.of(context).textPrimary),
               decoration: InputDecoration(
                   prefixText: symbol,
                   prefixStyle: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       color: AppTheme.of(context).textSecondary),
                   hintText: '0.00',
                   hintStyle: TextStyle(
-                      fontSize: 12, color: AppTheme.of(context).textMuted),
+                      fontSize: 11, color: AppTheme.of(context).textMuted),
                   border: InputBorder.none,
                   isDense: true,
                   contentPadding: EdgeInsets.zero),
@@ -924,9 +913,8 @@ class _LineItemRow extends StatelessWidget {
           Text(
             '= $symbol${ctrl.lineTotal.toStringAsFixed(2)}',
             style: TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
-                fontFamily: 'Courier',
                 color: AppTheme.accent),
           ),
         ]);
@@ -946,10 +934,10 @@ class _SectionLabel extends StatelessWidget {
         child: Text(
           text.toUpperCase(),
           style: TextStyle(
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
               color: AppTheme.of(context).textMuted,
-              letterSpacing: 0.8),
+),
         ),
       );
 }
@@ -985,7 +973,7 @@ class _Field extends StatelessWidget {
           hintStyle:
               TextStyle(fontSize: 11, color: AppTheme.of(context).textMuted),
           labelStyle: TextStyle(
-              fontSize: 12, color: AppTheme.of(context).textSecondary),
+              fontSize: 11, color: AppTheme.of(context).textSecondary),
           filled: true,
           fillColor: AppTheme.of(context).cardAlt,
           border: OutlineInputBorder(
@@ -1020,7 +1008,7 @@ class _DateTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: AppTheme.of(context).cardAlt,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(color: AppTheme.of(context).border),
           ),
           child: Column(
@@ -1028,7 +1016,7 @@ class _DateTile extends StatelessWidget {
               children: [
                 Text(label,
                     style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 11,
                         color: AppTheme.of(context).textSecondary)),
                 const SizedBox(height: 3),
                 Text(
@@ -1110,7 +1098,7 @@ class _InvoicePreviewSheet extends StatelessWidget {
                 const Expanded(
                   child: Text('Invoice Preview',
                       style: TextStyle(
-                          fontSize: 17, fontWeight: FontWeight.w700)),
+                          fontSize: 16, fontWeight: FontWeight.w700)),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -1122,7 +1110,7 @@ class _InvoicePreviewSheet extends StatelessWidget {
                   ),
                   child: Text('Client view',
                       style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color: AppTheme.of(context).textMuted)),
                 ),
@@ -1183,7 +1171,7 @@ class _InvoicePreviewSheet extends StatelessWidget {
                                       fontSize: 22,
                                       fontWeight: FontWeight.w900,
                                       letterSpacing: 2,
-                                      color: Color(0xFF6C6FFF),
+                                      color: AppTheme.accent,
                                     )),
                                 Text(invoiceNumber,
                                     style: const TextStyle(
@@ -1288,7 +1276,7 @@ class _InvoicePreviewSheet extends StatelessWidget {
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,
                                       color: Color(0xFF111217),
-                                      fontFamily: 'Courier'),
+                                      ),
                                 ),
                               ]),
                             )),
@@ -1312,8 +1300,7 @@ class _InvoicePreviewSheet extends StatelessWidget {
                               style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w800,
-                                color: Color(0xFF6C6FFF),
-                                fontFamily: 'Courier',
+                                color: AppTheme.accent,
                               ),
                             ),
                           ],

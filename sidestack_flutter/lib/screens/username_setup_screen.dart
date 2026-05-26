@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/app_provider.dart';
@@ -102,7 +103,7 @@ class _UsernameSetupScreenState extends State<UsernameSetupScreen> {
                           ? 'Hey $firstName 👋'
                           : 'One last step 👋',
                       style: const TextStyle(
-                          fontSize: 26,
+                          fontSize: 24,
                           fontWeight: FontWeight.w700,
                           letterSpacing: -0.5),
                     ),
@@ -111,7 +112,7 @@ class _UsernameSetupScreenState extends State<UsernameSetupScreen> {
                       'You\'re signed in with $providerName.\nJust pick a username and you\'re in.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13,
                           color: colors.textSecondary,
                           height: 1.5),
                     ),
@@ -129,7 +130,7 @@ class _UsernameSetupScreenState extends State<UsernameSetupScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
                   decoration: BoxDecoration(
                     color: colors.cardAlt,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: colors.border),
                   ),
                   child: Row(children: [
@@ -137,7 +138,7 @@ class _UsernameSetupScreenState extends State<UsernameSetupScreen> {
                       child: Text(
                         displayName,
                         style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 13,
                             fontWeight: FontWeight.w500,
                             color: colors.textPrimary),
                       ),
@@ -149,7 +150,7 @@ class _UsernameSetupScreenState extends State<UsernameSetupScreen> {
                   padding: const EdgeInsets.only(top: 4, left: 2),
                   child: Text(
                     'Taken from your $providerName account',
-                    style: TextStyle(fontSize: 10, color: colors.textMuted),
+                    style: TextStyle(fontSize: 11, color: colors.textMuted),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -162,14 +163,15 @@ class _UsernameSetupScreenState extends State<UsernameSetupScreen> {
                 autofocus: true,
                 autocorrect: false,
                 keyboardType: TextInputType.visiblePassword,
-                style: TextStyle(fontSize: 14, color: colors.textPrimary),
+                style: TextStyle(fontSize: 13, color: colors.textPrimary),
                 decoration: InputDecoration(
                   hintText: 'e.g. jordandawes',
                   prefixText: '@',
                   errorText: _usernameError,
                   helperText: '3–20 characters · letters, numbers, underscores',
-                  helperStyle: TextStyle(fontSize: 10, color: colors.textMuted),
+                  helperStyle: TextStyle(fontSize: 11, color: colors.textMuted),
                 ),
+                inputFormatters: [LengthLimitingTextInputFormatter(30)],
                 onChanged: (_) {
                   if (_usernameError != null) setState(() => _usernameError = null);
                 },
@@ -219,12 +221,11 @@ class _Label extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 6),
     child: Text(
-      text.toUpperCase(),
+      text,
       style: TextStyle(
-          fontSize: 9,
+          fontSize: 11,
           fontWeight: FontWeight.w600,
-          color: AppTheme.of(context).textMuted,
-          letterSpacing: 0.8),
+          color: AppTheme.of(context).textMuted),
     ),
   );
 }

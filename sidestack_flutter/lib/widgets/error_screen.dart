@@ -40,7 +40,7 @@ class ErrorScreen extends StatelessWidget {
         Text(
           'Something went wrong',
           style: TextStyle(
-            fontSize: 17,
+            fontSize: 16,
             fontWeight: FontWeight.w700,
             color: theme.textPrimary,
             letterSpacing: -0.3,

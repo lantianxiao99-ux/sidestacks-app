@@ -1,6 +1,65 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 
+// ─── Stack Type ───────────────────────────────────────────────────────────────
+
+enum StackType { income, budget, savings, salary }
+
+extension StackTypeExtension on StackType {
+  String get label {
+    switch (this) {
+      case StackType.income:  return 'Side Hustle';
+      case StackType.budget:  return 'Budget';
+      case StackType.savings: return 'Savings Goal';
+      case StackType.salary:  return 'Salary';
+    }
+  }
+
+  String get description {
+    switch (this) {
+      case StackType.income:  return 'Track money coming in from a side hustle or project';
+      case StackType.budget:  return 'Set a monthly spending limit for a category';
+      case StackType.savings: return 'Track progress toward a savings target';
+      case StackType.salary:  return 'Track your main job income and regular paychecks';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case StackType.income:  return Icons.trending_up_outlined;
+      case StackType.budget:  return Icons.account_balance_wallet_outlined;
+      case StackType.savings: return Icons.savings_outlined;
+      case StackType.salary:  return Icons.work_outlined;
+    }
+  }
+
+  Color color(BuildContext context) {
+    switch (this) {
+      case StackType.income:  return const Color(0xFF0D9488); // teal
+      case StackType.budget:  return const Color(0xFF6366F1); // indigo
+      case StackType.savings: return const Color(0xFFF59E0B); // amber
+      case StackType.salary:  return const Color(0xFF2563EB); // blue
+    }
+  }
+
+  /// Whether this stack type belongs to the Main section by default.
+  bool get isPersonalByDefault {
+    switch (this) {
+      case StackType.income:  return false; // side hustle
+      case StackType.budget:  return true;
+      case StackType.savings: return true;
+      case StackType.salary:  return true;
+    }
+  }
+
+  static StackType fromString(String? s) {
+    return StackType.values.firstWhere(
+      (e) => e.name == s,
+      orElse: () => StackType.income,
+    );
+  }
+}
+
 enum HustleType { reselling, freelance, business, content, other }
 
 extension HustleTypeExtension on HustleType {
@@ -135,10 +194,19 @@ class SideStack {
   String? description;
   final DateTime startDate;
   HustleType hustleType;
+  StackType stackType;
   List<Transaction> transactions;
   double? goalAmount;
   double? monthlyGoalAmount;
+  /// Monthly spend limit — only used when [stackType] == budget.
+  double? monthlyBudget;
+  /// Savings target amount — only used when [stackType] == savings.
+  double? savingsTarget;
   bool isArchived;
+  /// Whether this stack belongs to the "Main" section (personal finance)
+  /// vs the "Side Hustles" section. Salary stacks are always true; income stacks
+  /// are always false. Budget and savings can be either.
+  bool isPersonal;
 
   SideStack({
     required this.id,
@@ -147,10 +215,14 @@ class SideStack {
     this.description,
     required this.startDate,
     required this.hustleType,
+    this.stackType = StackType.income,
     List<Transaction>? transactions,
     this.goalAmount,
     this.monthlyGoalAmount,
+    this.monthlyBudget,
+    this.savingsTarget,
     this.isArchived = false,
+    this.isPersonal = false,
   }) : transactions = transactions ?? [];
 
   double get totalIncome => transactions
@@ -207,10 +279,71 @@ class SideStack {
         .fold(0.0, (sum, t) => sum + t.amount);
   }
 
+  /// Total income in the current calendar year (year-to-date).
+  double get ytdIncome {
+    final now = DateTime.now();
+    return transactions
+        .where((t) =>
+            t.type == TransactionType.income && t.date.year == now.year)
+        .fold(0.0, (sum, t) => sum + t.amount);
+  }
+
+  /// Number of transactions in the current calendar month.
+  int get thisMonthTransactionCount {
+    final now = DateTime.now();
+    return transactions
+        .where((t) => t.date.year == now.year && t.date.month == now.month)
+        .length;
+  }
+
   /// Progress toward monthly goal this month (0.0 – 1.0).
   double get monthlyGoalProgress {
     if (monthlyGoalAmount == null || monthlyGoalAmount! <= 0) return 0;
     return (thisMonthIncome / monthlyGoalAmount!).clamp(0.0, 1.0);
+  }
+
+  // ── Budget stack helpers ────────────────────────────────────────────────────
+
+  /// Total expenses logged in the current calendar month.
+  double get thisMonthSpend {
+    final now = DateTime.now();
+    return transactions
+        .where((t) =>
+            t.type == TransactionType.expense &&
+            t.date.year == now.year &&
+            t.date.month == now.month)
+        .fold(0.0, (sum, t) => sum + t.amount);
+  }
+
+  /// How much budget is left this month. Negative means over budget.
+  double get budgetRemaining {
+    if (monthlyBudget == null || monthlyBudget! <= 0) return 0;
+    return monthlyBudget! - thisMonthSpend;
+  }
+
+  /// Fraction of monthly budget used (0.0–1.0+). Can exceed 1.0 if over budget.
+  double get budgetUsedFraction {
+    if (monthlyBudget == null || monthlyBudget! <= 0) return 0;
+    return thisMonthSpend / monthlyBudget!;
+  }
+
+  bool get isOverBudget =>
+      monthlyBudget != null && monthlyBudget! > 0 && thisMonthSpend > monthlyBudget!;
+
+  // ── Savings stack helpers ───────────────────────────────────────────────────
+
+  /// Total saved = sum of all income-type transactions (treated as deposits).
+  double get totalSaved => totalIncome;
+
+  /// Progress toward savings target (0.0–1.0).
+  double get savingsProgress {
+    if (savingsTarget == null || savingsTarget! <= 0) return 0;
+    return (totalSaved / savingsTarget!).clamp(0.0, 1.0);
+  }
+
+  double get savingsRemaining {
+    if (savingsTarget == null || savingsTarget! <= 0) return 0;
+    return (savingsTarget! - totalSaved).clamp(0, double.infinity);
   }
 
   /// Pace indicator: >1.0 means ahead, <1.0 means behind, null if no goal.
@@ -252,26 +385,40 @@ class SideStack {
     'description': description,
     'startDate': startDate.toIso8601String(),
     'hustleType': hustleType.name,
+    'stackType': stackType.name,
     'goalAmount': goalAmount,
     'monthlyGoalAmount': monthlyGoalAmount,
+    'monthlyBudget': monthlyBudget,
+    'savingsTarget': savingsTarget,
     'isArchived': isArchived,
+    'isPersonal': isPersonal,
     'transactions': transactions.map((t) => t.toJson()).toList(),
   };
 
-  factory SideStack.fromJson(Map<String, dynamic> json) => SideStack(
-    id: json['id'],
-    name: json['name'],
-    businessName: json['businessName'] as String?,
-    description: json['description'],
-    startDate: DateTime.parse(json['startDate']),
-    hustleType: HustleTypeExtension.fromString(json['hustleType']),
-    goalAmount: (json['goalAmount'] as num?)?.toDouble(),
-    monthlyGoalAmount: (json['monthlyGoalAmount'] as num?)?.toDouble(),
-    isArchived: json['isArchived'] ?? false,
-    transactions: (json['transactions'] as List)
-        .map((t) => Transaction.fromJson(t))
-        .toList(),
-  );
+  factory SideStack.fromJson(Map<String, dynamic> json) {
+    final st = StackTypeExtension.fromString(json['stackType'] as String?);
+    // isPersonal: use stored value if present, otherwise derive from stackType
+    // (backward-compatible — old data without this field gets a sensible default)
+    final isPersonal = json['isPersonal'] as bool? ?? st.isPersonalByDefault;
+    return SideStack(
+      id: json['id'],
+      name: json['name'],
+      businessName: json['businessName'] as String?,
+      description: json['description'],
+      startDate: DateTime.parse(json['startDate']),
+      hustleType: HustleTypeExtension.fromString(json['hustleType']),
+      stackType: st,
+      goalAmount: (json['goalAmount'] as num?)?.toDouble(),
+      monthlyGoalAmount: (json['monthlyGoalAmount'] as num?)?.toDouble(),
+      monthlyBudget: (json['monthlyBudget'] as num?)?.toDouble(),
+      savingsTarget: (json['savingsTarget'] as num?)?.toDouble(),
+      isArchived: json['isArchived'] ?? false,
+      isPersonal: isPersonal,
+      transactions: (json['transactions'] as List)
+          .map((t) => Transaction.fromJson(t))
+          .toList(),
+    );
+  }
 
   String toJsonString() => jsonEncode(toJson());
 

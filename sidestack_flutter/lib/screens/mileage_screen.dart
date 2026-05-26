@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
@@ -77,7 +78,7 @@ class _MileageScreenState extends State<MileageScreen> {
         ),
         title: const Text(
           'Mileage',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
         ),
       ),
       body: CustomScrollView(
@@ -89,17 +90,9 @@ class _MileageScreenState extends State<MileageScreen> {
               child: Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppTheme.accent.withOpacity(0.15),
-                      AppTheme.green.withOpacity(0.10),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  color: AppTheme.of(context).card,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                      color: AppTheme.accent.withOpacity(0.25)),
+                  border: Border.all(color: AppTheme.of(context).border),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -122,7 +115,7 @@ class _MileageScreenState extends State<MileageScreen> {
                             Text(
                               '${totalMiles.toStringAsFixed(1)} miles  ·  ${totalKm.toStringAsFixed(1)} km',
                               style: const TextStyle(
-                                  fontSize: 18,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: -0.3),
                             ),
@@ -154,7 +147,7 @@ class _MileageScreenState extends State<MileageScreen> {
                     Text(
                       'Based on HMRC 45p/mile rate. Consult a tax professional.',
                       style: TextStyle(
-                          fontSize: 9,
+                          fontSize: 11,
                           color: AppTheme.of(context).textMuted,
                           fontStyle: FontStyle.italic),
                     ),
@@ -174,14 +167,7 @@ class _MileageScreenState extends State<MileageScreen> {
                     Container(
                       width: 64, height: 64,
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppTheme.accent.withOpacity(0.2),
-                            AppTheme.accent.withOpacity(0.05),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                        color: AppTheme.of(context).cardAlt,
                         shape: BoxShape.circle,
                       ),
                       child: const Center(
@@ -193,7 +179,7 @@ class _MileageScreenState extends State<MileageScreen> {
                     const Text(
                       'No trips logged yet',
                       style: TextStyle(
-                          fontSize: 17, fontWeight: FontWeight.w700),
+                          fontSize: 16, fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -273,7 +259,7 @@ class _TripCard extends StatelessWidget {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         decoration: BoxDecoration(
-          color: AppTheme.red.withOpacity(0.12),
+          color: AppTheme.of(context).cardAlt,
           borderRadius: BorderRadius.circular(14),
         ),
         child: const Icon(Icons.delete_outline, color: AppTheme.red),
@@ -328,15 +314,14 @@ class _TripCard extends StatelessWidget {
                 Text(
                   '${miles.toStringAsFixed(1)} mi',
                   style: const TextStyle(
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      fontFamily: 'Courier',
                       color: AppTheme.accent),
                 ),
                 Text(
                   '£${deduction.toStringAsFixed(2)} deductible',
                   style: const TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
                       color: AppTheme.green,
                       fontWeight: FontWeight.w500),
                 ),
@@ -363,24 +348,23 @@ class _StatPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.10),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
+        color: AppTheme.of(context).card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.of(context).border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
               style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 11,
                   color: AppTheme.of(context).textMuted,
                   fontWeight: FontWeight.w500)),
           const SizedBox(height: 2),
           Text(value,
               style: TextStyle(
-                  fontSize: 15,
+                  fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  fontFamily: 'Courier',
                   color: color)),
         ],
       ),
@@ -506,7 +490,7 @@ class _LogTripSheetState extends State<_LogTripSheet> {
                     horizontal: 14, vertical: 13),
                 decoration: BoxDecoration(
                   color: AppTheme.of(context).card,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: AppTheme.of(context).border),
                 ),
                 child: Row(children: [
@@ -538,6 +522,7 @@ class _LogTripSheetState extends State<_LogTripSheet> {
                           color: AppTheme.of(context).textPrimary),
                       decoration: const InputDecoration(
                           hintText: 'Starting point'),
+                      inputFormatters: [LengthLimitingTextInputFormatter(100)],
                       onChanged: (_) => setState(() {}),
                     ),
                   ],
@@ -556,6 +541,7 @@ class _LogTripSheetState extends State<_LogTripSheet> {
                           color: AppTheme.of(context).textPrimary),
                       decoration:
                           const InputDecoration(hintText: 'Destination'),
+                      inputFormatters: [LengthLimitingTextInputFormatter(100)],
                       onChanged: (_) => setState(() {}),
                     ),
                   ],
@@ -573,17 +559,17 @@ class _LogTripSheetState extends State<_LogTripSheet> {
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
                   style: TextStyle(
-                      fontSize: 20,
-                      fontFamily: 'Courier',
+                      fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: AppTheme.of(context).textPrimary),
                   decoration: InputDecoration(
                     hintText: '0.0',
                     suffixText: _useKm ? 'km' : 'mi',
                     suffixStyle: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         color: AppTheme.of(context).textMuted),
                   ),
+                  inputFormatters: [LengthLimitingTextInputFormatter(8)],
                   autofocus: true,
                   onChanged: (_) => setState(() {}),
                 ),
@@ -596,15 +582,14 @@ class _LogTripSheetState extends State<_LogTripSheet> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: AppTheme.accentDim,
+                    color: AppTheme.of(context).cardAlt,
                     borderRadius: BorderRadius.circular(20),
-                    border:
-                        Border.all(color: AppTheme.accent.withOpacity(0.4)),
+                    border: Border.all(color: AppTheme.of(context).border),
                   ),
                   child: Text(
                     _useKm ? 'km' : 'mi',
                     style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.w700,
                         color: AppTheme.accent),
                   ),
@@ -619,19 +604,20 @@ class _LogTripSheetState extends State<_LogTripSheet> {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: AppTheme.greenDim,
+                  color: AppTheme.of(context).cardAlt,
                   borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.of(context).border),
                 ),
                 child: Row(children: [
-                  const Icon(Icons.savings_outlined,
-                      size: 13, color: AppTheme.green),
+                  Icon(Icons.savings_outlined,
+                      size: 13, color: AppTheme.of(context).textSecondary),
                   const SizedBox(width: 6),
                   Text(
                     'Est. deduction: £${estimatedDeduction.toStringAsFixed(2)}  (${estimatedMiles.toStringAsFixed(1)} mi × 45p)',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
-                        color: AppTheme.green),
+                        color: AppTheme.of(context).textSecondary),
                   ),
                 ]),
               ),
@@ -646,6 +632,7 @@ class _LogTripSheetState extends State<_LogTripSheet> {
                   fontSize: 13, color: AppTheme.of(context).textPrimary),
               decoration: const InputDecoration(
                   hintText: 'e.g. Client meeting, site visit…'),
+              inputFormatters: [LengthLimitingTextInputFormatter(200)],
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 20),
@@ -665,7 +652,7 @@ class _LogTripSheetState extends State<_LogTripSheet> {
                 ),
                 child: const Text('Save trip',
                     style: TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w700)),
+                        fontSize: 16, fontWeight: FontWeight.w700)),
               ),
             ),
           ],
@@ -683,12 +670,11 @@ class _Label extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(bottom: 6),
         child: Text(
-          text.toUpperCase(),
+          text,
           style: TextStyle(
-            fontSize: 9,
+            fontSize: 11,
             fontWeight: FontWeight.w600,
             color: AppTheme.of(context).textMuted,
-            letterSpacing: 0.8,
           ),
         ),
       );
